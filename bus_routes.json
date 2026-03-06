@@ -1,0 +1,1642 @@
+[
+  {
+    "bus_id":380,
+    "bus_no":"63-1",
+    "route_name":"Bến xe buýt Tân Phú - Bến xe Tiền Giang"
+  },
+  {
+    "bus_id":100,
+    "bus_no":"62-9",
+    "route_name":"Bến xe buýt Quận 8 - Thị xã Gò Công"
+  },
+  {
+    "bus_id":117,
+    "bus_no":"77",
+    "route_name":"Đồng Hòa - Cần Thạnh"
+  },
+  {
+    "bus_id":219,
+    "bus_no":"HS-0-2",
+    "route_name":"Chợ Đồng Hòa - Trường Tiểu Học Đồng Hòa"
+  },
+  {
+    "bus_id":115,
+    "bus_no":"75",
+    "route_name":"Sài Gòn - Cần Giờ"
+  },
+  {
+    "bus_id":130,
+    "bus_no":"90",
+    "route_name":"Phà Bình Khánh - Cần Thạnh"
+  },
+  {
+    "bus_id":221,
+    "bus_no":"HS-0-4",
+    "route_name":"Duyên Hải - Trường Tiểu Học Hòa Hiệp"
+  },
+  {
+    "bus_id":223,
+    "bus_no":"HS-0-6",
+    "route_name":"Trạm Y Tế Hòa Hiệp - Trường THCS Long Hòa"
+  },
+  {
+    "bus_id":222,
+    "bus_no":"HS-0-5",
+    "route_name":"Nguyễn Văn Mạnh - Trường THCS Long Hòa"
+  },
+  {
+    "bus_id":404,
+    "bus_no":"172",
+    "route_name":"Bến xe Vũng Tàu - Trung tâm hành chính Bà Rịa Vũng Tàu -  Bến Thành"
+  },
+  {
+    "bus_id":335,
+    "bus_no":"72-1",
+    "route_name":"Sân bay Tân Sơn Nhất – Đường cao tốc – Bến xe Vũng Tàu"
+  },
+  {
+    "bus_id":401,
+    "bus_no":"DRCB VT",
+    "route_name":"Đưa rước từ Trung tâm hành chính Bà Rịa Vũng Tàu đến Trung tâm hành chính Thành phố Hồ Chí Minh"
+  },
+  {
+    "bus_id":92,
+    "bus_no":"62-10",
+    "route_name":"Bến xe buýt Chợ Lớn - Thanh Vĩnh Đông"
+  },
+  {
+    "bus_id":220,
+    "bus_no":"HS-0-3",
+    "route_name":"Ngã 3 Phan Đức - Trường Tiểu Học Hòa Hiệp"
+  },
+  {
+    "bus_id":179,
+    "bus_no":"128",
+    "route_name":"Tân Điền - An Nghĩa"
+  },
+  {
+    "bus_id":299,
+    "bus_no":"HS-79",
+    "route_name":"Dương Văn Hạnh (hướng từ cầu vàm sát) - Trường THCS Lý Nhơn"
+  },
+  {
+    "bus_id":300,
+    "bus_no":"HS-80",
+    "route_name":"Dương Văn Hạnh - Trường THCS Lý Nhơn"
+  },
+  {
+    "bus_id":301,
+    "bus_no":"HS-81",
+    "route_name":"Lý Nhơn - Trường THCS Lý Nhơn"
+  },
+  {
+    "bus_id":99,
+    "bus_no":"62-8",
+    "route_name":"Bến xe buýt Chợ Lớn - Bến xe Tân An"
+  },
+  {
+    "bus_id":204,
+    "bus_no":"62-1",
+    "route_name":"Bến xe buýt Chợ Lớn  - Bến xe Tân Trụ"
+  },
+  {
+    "bus_id":94,
+    "bus_no":"62-2",
+    "route_name":"Bến xe buýt Chợ Lớn - Ngã ba Tân Lân"
+  },
+  {
+    "bus_id":93,
+    "bus_no":"62-11",
+    "route_name":"Bến xe buýt Quận 8 - Tân Tập"
+  },
+  {
+    "bus_id":18,
+    "bus_no":"110",
+    "route_name":"Hiệp Phước - Phước Lộc"
+  },
+  {
+    "bus_id":112,
+    "bus_no":"72",
+    "route_name":"Bến xe buýt Sài Gòn - Hiệp Phước"
+  },
+  {
+    "bus_id":178,
+    "bus_no":"127",
+    "route_name":"An Thới Đông - Ngã ba Bà Xán"
+  },
+  {
+    "bus_id":294,
+    "bus_no":"HS-74",
+    "route_name":"Tam Thôn Hiệp - Trường Tiểu Học Tam Thôn Hiệp"
+  },
+  {
+    "bus_id":295,
+    "bus_no":"HS-75",
+    "route_name":"Nguyễn Công Bao - Trường Tiểu Học Tam Thôn Hiệp"
+  },
+  {
+    "bus_id":296,
+    "bus_no":"HS-76",
+    "route_name":"Tam Thôn Hiệp - Trường THCS Tam Thôn Hiệp"
+  },
+  {
+    "bus_id":297,
+    "bus_no":"HS-77",
+    "route_name":"Tam Thôn Hiệp(gần nhà thờ thánh Giuse)- Trường THCS Tam Thôn Hiệp"
+  },
+  {
+    "bus_id":298,
+    "bus_no":"HS-78",
+    "route_name":"Trung Tâm Học Tập Cộng Đồng - Trường THCS Tam Thôn Hiệp"
+  },
+  {
+    "bus_id":305,
+    "bus_no":"HS-85",
+    "route_name":"Tam Thôn Hiệp - Trường THPT An Nghĩa"
+  },
+  {
+    "bus_id":9,
+    "bus_no":"09",
+    "route_name":"Bến xe buýt Chợ Lớn - Bình Chánh - Hưng Long"
+  },
+  {
+    "bus_id":68,
+    "bus_no":"47",
+    "route_name":"Bến xe buýt Chợ Lớn - Quốc lộ 50 - Hưng Long"
+  },
+  {
+    "bus_id":308,
+    "bus_no":"HS-88",
+    "route_name":"Nguyễn Văn Long - Trường Tiểu Học Qui Đức"
+  },
+  {
+    "bus_id":306,
+    "bus_no":"HS-86",
+    "route_name":"Quốc Lộ 50 - Trường Tiểu Học Qui Đức"
+  },
+  {
+    "bus_id":307,
+    "bus_no":"HS-87",
+    "route_name":"Bùi Văn Sự - Trường Tiểu Học Qui Đức"
+  },
+  {
+    "bus_id":156,
+    "bus_no":"C010",
+    "route_name":"Phổ Quang - KCN Hiệp Phước"
+  },
+  {
+    "bus_id":288,
+    "bus_no":"HS-68",
+    "route_name":"Rừng Sác - Trường Tiểu Học Bình Phước"
+  },
+  {
+    "bus_id":289,
+    "bus_no":"HS-69",
+    "route_name":"Rừng Sác - Trường Tiểu Học Bình Phước"
+  },
+  {
+    "bus_id":290,
+    "bus_no":"HS-70",
+    "route_name":"Trần Quang Quờn - Trường Tiểu Học Bình Phước"
+  },
+  {
+    "bus_id":387,
+    "bus_no":"HS-03",
+    "route_name":"Đường Trần Quang Quờn (Khu dân cư kho lúa) - Trường THCS Bình Khánh"
+  },
+  {
+    "bus_id":291,
+    "bus_no":"HS-71",
+    "route_name":"Trần Quang Nhơn - Trường Tiểu Học Bình Thạnh"
+  },
+  {
+    "bus_id":309,
+    "bus_no":"HS-89",
+    "route_name":"Hà Quang Vóc - Trường Tiểu Học Bình Thạnh"
+  },
+  {
+    "bus_id":303,
+    "bus_no":"HS-01",
+    "route_name":"Hà Quang Vóc - Trường THCS Bình Khánh"
+  },
+  {
+    "bus_id":304,
+    "bus_no":"HS-02",
+    "route_name":"Bà Xán - Trường THCS Bình Khánh"
+  },
+  {
+    "bus_id":302,
+    "bus_no":"HS-04",
+    "route_name":"Rừng Sác (Bình Khánh) - Trường THCS Bình Khánh"
+  },
+  {
+    "bus_id":388,
+    "bus_no":"HS-05",
+    "route_name":"Hà Quang Vóc - Trường THPT Bình Khánh"
+  },
+  {
+    "bus_id":389,
+    "bus_no":"HS-06",
+    "route_name":"Bà Xán - Trường THPT Bình Khánh"
+  },
+  {
+    "bus_id":390,
+    "bus_no":"HS-07",
+    "route_name":"Đường Rừng Sác (Bình Khánh) - Trường THPT Bình Khánh"
+  },
+  {
+    "bus_id":96,
+    "bus_no":"62-4",
+    "route_name":"Thị trấn Tân Túc - Chợ Bến Lức"
+  },
+  {
+    "bus_id":13,
+    "bus_no":"102",
+    "route_name":"Bến xe buýt Sài Gòn - Nguyễn Văn Linh - Bến xe Miền Tây"
+  },
+  {
+    "bus_id":43,
+    "bus_no":"22",
+    "route_name":"Bến xe buýt Quận 8 - Khu công nghiệp Lê Minh Xuân"
+  },
+  {
+    "bus_id":120,
+    "bus_no":"80",
+    "route_name":"Bến xe Chợ Lớn - Ba Làng"
+  },
+  {
+    "bus_id":122,
+    "bus_no":"82",
+    "route_name":"Bến xe Chợ Lớn - Ngã 3 Tân Qúy Tây"
+  },
+  {
+    "bus_id":132,
+    "bus_no":"92",
+    "route_name":"Bến xe Chợ Lớn - Chợ Bình Chánh"
+  },
+  {
+    "bus_id":113,
+    "bus_no":"73",
+    "route_name":"Chợ Bình Chánh - Khu công nghiệp Lê Minh Xuân"
+  },
+  {
+    "bus_id":12,
+    "bus_no":"101",
+    "route_name":"Bến xe buýt Chợ Lớn - Chợ Tân Nhựt"
+  },
+  {
+    "bus_id":124,
+    "bus_no":"84",
+    "route_name":"Bến xe buýt Chợ Lớn - Tân Túc"
+  },
+  {
+    "bus_id":136,
+    "bus_no":"96",
+    "route_name":"Bến Xe Buýt Sài Gòn - Chợ Bình Điền"
+  },
+  {
+    "bus_id":58,
+    "bus_no":"37",
+    "route_name":"Cảng Quận 4 - Nhơn Đức"
+  },
+  {
+    "bus_id":126,
+    "bus_no":"86",
+    "route_name":"Bến Thành - Đại học Tôn Đức Thắng - Cầu Long Kiểng"
+  },
+  {
+    "bus_id":42,
+    "bus_no":"20",
+    "route_name":"Bến Thành - Nhà Bè"
+  },
+  {
+    "bus_id":285,
+    "bus_no":"HS-65",
+    "route_name":"Rừng Sác - Trần Quang Đạo(rẽ trái) - Trường Tiểu Học Bình Khánh"
+  },
+  {
+    "bus_id":286,
+    "bus_no":"HS-66",
+    "route_name":"Trần Quang Đạo(rẽ phải) - Trường Tiểu Học Bình Khánh"
+  },
+  {
+    "bus_id":287,
+    "bus_no":"HS-67",
+    "route_name":"Rùng Sác - Trường Tiểu Học Bình Khánh"
+  },
+  {
+    "bus_id":121,
+    "bus_no":"81",
+    "route_name":"Bến xe buýt Chợ Lớn - Lê Minh Xuân"
+  },
+  {
+    "bus_id":80,
+    "bus_no":"60",
+    "route_name":"Bến xe An Sương - KCN Lê Minh Xuân"
+  },
+  {
+    "bus_id":84,
+    "bus_no":"61",
+    "route_name":"Bến xe buýt Chợ Lớn - Khu công nghiệp Lê Minh Xuân"
+  },
+  {
+    "bus_id":34,
+    "bus_no":"15",
+    "route_name":"Chợ Phú Định - Đầm Sen"
+  },
+  {
+    "bus_id":36,
+    "bus_no":"151",
+    "route_name":"Bến xe Miền Tây - Bến xe An Sương"
+  },
+  {
+    "bus_id":81,
+    "bus_no":"60-1",
+    "route_name":"Bến xe Miền Tây - Bến xe Biên Hòa"
+  },
+  {
+    "bus_id":2,
+    "bus_no":"02",
+    "route_name":"Bến Thành - Bến Xe Miền Tây"
+  },
+  {
+    "bus_id":10,
+    "bus_no":"10",
+    "route_name":"Đại học Quốc Gia - Bến xe Miền Tây"
+  },
+  {
+    "bus_id":32,
+    "bus_no":"148",
+    "route_name":"Bến xe Miền Tây - Gò Vấp"
+  },
+  {
+    "bus_id":46,
+    "bus_no":"25",
+    "route_name":"Bến Xe buýt Quận 8 - Khu dân cư Vĩnh Lộc A"
+  },
+  {
+    "bus_id":131,
+    "bus_no":"91",
+    "route_name":"Bến xe Miền Tây - Chợ nông sản Thủ Đức"
+  },
+  {
+    "bus_id":197,
+    "bus_no":"119",
+    "route_name":"Sân bay Tân Sơn Nhất - Bến xe Miền Tây"
+  },
+  {
+    "bus_id":25,
+    "bus_no":"139",
+    "route_name":"Bến xe Miền Tây - Khu Tái Định Cư Phú Mỹ"
+  },
+  {
+    "bus_id":26,
+    "bus_no":"14",
+    "route_name":"Bến xe Miền Đông - Bến xe Miền Tây"
+  },
+  {
+    "bus_id":29,
+    "bus_no":"144",
+    "route_name":"Bến Xe Buýt  Miền Tây -  Chợ Lớn - CV Đầm Sen - CX Nhiêu Lộc"
+  },
+  {
+    "bus_id":53,
+    "bus_no":"32",
+    "route_name":"Bến xe Miền Tây - Bến xe Ngã tư Ga"
+  },
+  {
+    "bus_id":60,
+    "bus_no":"39",
+    "route_name":"Bến Thành - Võ Văn Kiệt - Bến xe Miền Tây"
+  },
+  {
+    "bus_id":62,
+    "bus_no":"41",
+    "route_name":"Bến xe Miền Tây - Ngã tư Bốn Xã - Bến xe An Sương"
+  },
+  {
+    "bus_id":27,
+    "bus_no":"140",
+    "route_name":"Bến xe buýt Sài Gòn - Phạm Thế Hiển - Khu dân cư Phú Lợi"
+  },
+  {
+    "bus_id":66,
+    "bus_no":"45",
+    "route_name":"Đại học Kinh tế - Bến Thành - Bến xe Miền Đông"
+  },
+  {
+    "bus_id":67,
+    "bus_no":"46",
+    "route_name":"Công viên Tôn Thất Thuyết - Bến Mễ Cốc"
+  },
+  {
+    "bus_id":8,
+    "bus_no":"08",
+    "route_name":"Bến xe buýt Quận 8 - Đại học Quốc gia"
+  },
+  {
+    "bus_id":55,
+    "bus_no":"34",
+    "route_name":"Bến xe buýt Sài Gòn - Bến xe buýt Quận 8"
+  },
+  {
+    "bus_id":79,
+    "bus_no":"59",
+    "route_name":"Bến xe buýt Quận 8 - Bến xe Ngã tư Ga"
+  },
+  {
+    "bus_id":91,
+    "bus_no":"62",
+    "route_name":"Bến xe buýt Quận 8 - Thới An"
+  },
+  {
+    "bus_id":21,
+    "bus_no":"123",
+    "route_name":"Phú Mỹ Hưng (khu H) - Quận 1"
+  },
+  {
+    "bus_id":22,
+    "bus_no":"124",
+    "route_name":"Phú Mỹ Hưng (khu S) - Quận 1"
+  },
+  {
+    "bus_id":52,
+    "bus_no":"31",
+    "route_name":"Đại Học Tôn Đức Thắng - Bến Thành - Đại học Văn Lang"
+  },
+  {
+    "bus_id":104,
+    "bus_no":"68",
+    "route_name":"Bến xe buýt Chợ Lớn - Đại học Tài Chính - Marketing"
+  },
+  {
+    "bus_id":39,
+    "bus_no":"17",
+    "route_name":"Bến Xe buýt Chợ Lớn - Đại học Sài Gòn - Khu chế xuất Tân Thuận"
+  },
+  {
+    "bus_id":37,
+    "bus_no":"152",
+    "route_name":"Khu dân cư Trung Sơn - Bến Thành - Sân bay Tân Sơn Nhất"
+  },
+  {
+    "bus_id":319,
+    "bus_no":"HS-99",
+    "route_name":"Trường Tiểu Học Lê Ngọc Hân(Nguyễn Du) - Nguyễn Văn Linh"
+  },
+  {
+    "bus_id":59,
+    "bus_no":"38",
+    "route_name":"Khu dân cư Tân Quy - Bến Thành - Đầm Sen"
+  },
+  {
+    "bus_id":212,
+    "bus_no":"D2",
+    "route_name":"Sky Garden – Cresent Mall"
+  },
+  {
+    "bus_id":211,
+    "bus_no":"D3",
+    "route_name":"Riverside Resident- Cresent Mall"
+  },
+  {
+    "bus_id":363,
+    "bus_no":"MB-H36",
+    "route_name":"Quận 7 - Quận 1"
+  },
+  {
+    "bus_id":317,
+    "bus_no":"HS-97",
+    "route_name":"Trường Tiểu Học Lê Ngọc Hân(Nguyễn Du) - Trần Trọng Cung"
+  },
+  {
+    "bus_id":318,
+    "bus_no":"HS-98",
+    "route_name":"Trường Tiểu Học Lê Ngọc Hân(Sương Nguyệt Ánh) - Trần Trọng Cung"
+  },
+  {
+    "bus_id":82,
+    "bus_no":"60-3",
+    "route_name":"Bến xe Miền Đông (cũ) - Khu Công nghiệp Nhơn Trạch"
+  },
+  {
+    "bus_id":111,
+    "bus_no":"71",
+    "route_name":"Bến xe An Sương - Phật Cô Đơn"
+  },
+  {
+    "bus_id":214,
+    "bus_no":"62-6",
+    "route_name":"Bến xe buýt Chợ Lớn - Bến xe Hậu Nghĩa"
+  },
+  {
+    "bus_id":98,
+    "bus_no":"62-7",
+    "route_name":"Bến xe buýt Chợ Lớn - Bến xe Đức Huệ"
+  },
+  {
+    "bus_id":38,
+    "bus_no":"16",
+    "route_name":"Bến xe buýt Chợ Lớn - Bến xe buýt Tân Phú"
+  },
+  {
+    "bus_id":71,
+    "bus_no":"51",
+    "route_name":"Bến xe Miền Đông - Bình Hưng Hòa"
+  },
+  {
+    "bus_id":30,
+    "bus_no":"145",
+    "route_name":"Bến xe buýt Chợ Lớn - Chợ Hiệp Thành"
+  },
+  {
+    "bus_id":17,
+    "bus_no":"11",
+    "route_name":"Bến Thành - Đầm Sen"
+  },
+  {
+    "bus_id":44,
+    "bus_no":"23",
+    "route_name":"Bến xe buýt Chợ Lớn - Ngã ba Giồng - Cầu Lớn"
+  },
+  {
+    "bus_id":105,
+    "bus_no":"69",
+    "route_name":"Bến xe buýt Sài Gòn - Khu dân cư Vĩnh Lộc"
+  },
+  {
+    "bus_id":101,
+    "bus_no":"64",
+    "route_name":"Bến xe Miền Đông - Đầm Sen"
+  },
+  {
+    "bus_id":24,
+    "bus_no":"13",
+    "route_name":"Bến xe buýt Sài Gòn - Bến xe Củ Chi"
+  },
+  {
+    "bus_id":33,
+    "bus_no":"149",
+    "route_name":"Bến Xe Buýt Sài Gòn - Tân Phú - Bến Xe An Sương"
+  },
+  {
+    "bus_id":51,
+    "bus_no":"30",
+    "route_name":"Chợ Tân Hương - Bến xe buýt Văn Thánh"
+  },
+  {
+    "bus_id":102,
+    "bus_no":"65",
+    "route_name":"Bến Thành - Cách Mạng Tháng Tám - Bến xe An Sương"
+  },
+  {
+    "bus_id":103,
+    "bus_no":"66",
+    "route_name":"Bến xe Chợ Lớn - Bến xe An Sương"
+  },
+  {
+    "bus_id":134,
+    "bus_no":"94",
+    "route_name":"Bến xe buýt Chợ Lớn - Bến xe Củ Chi"
+  },
+  {
+    "bus_id":48,
+    "bus_no":"27",
+    "route_name":"Bến xe buýt Sài Gòn - Âu Cơ - Bến xe An Sương"
+  },
+  {
+    "bus_id":230,
+    "bus_no":"HS-13",
+    "route_name":"Phạm Văn Bạch - Huỳnh Văn Nghệ - Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":231,
+    "bus_no":"HS-14",
+    "route_name":"Phạm Văn Bạch - Cống Lở - Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":232,
+    "bus_no":"HS-15",
+    "route_name":"Phạm Văn Bạch - Phan Huy Ích - Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":233,
+    "bus_no":"HS-16",
+    "route_name":"Cống Lở - Nguyễn Phúc Chu -Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":234,
+    "bus_no":"HS-17",
+    "route_name":"Nguyễn Sỹ Sách - Trần Thái Tông -Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":235,
+    "bus_no":"HS-18",
+    "route_name":"Phạm Văn Bạch - Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":236,
+    "bus_no":"HS-19",
+    "route_name":"Nguyễn Văn Quá - Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":237,
+    "bus_no":"HS-20",
+    "route_name":"Hoàng Bật Đạt - Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":238,
+    "bus_no":"HS-21",
+    "route_name":"Huỳnh Văn Nghệ - Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":239,
+    "bus_no":"HS-22",
+    "route_name":"Huỳnh Văn Nghệ - Phan Huy Ích - Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":240,
+    "bus_no":"HS-23",
+    "route_name":"Phạm Văn Bạch - Trương Công Định - Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":241,
+    "bus_no":"HS-24",
+    "route_name":"Huỳnh Văn Nghệ - Trần Thánh Tông - Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":242,
+    "bus_no":"HS-25",
+    "route_name":"Phan Huy Ích - Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":244,
+    "bus_no":"HS-26",
+    "route_name":"Huỳnh văn Nghệ - Trương Công Định - Trường THCS Trường Chinh"
+  },
+  {
+    "bus_id":266,
+    "bus_no":"HS-46",
+    "route_name":"Phan Huy Ích - Trường THCS Ngô Quyền"
+  },
+  {
+    "bus_id":267,
+    "bus_no":"HS-47",
+    "route_name":"Nguyễn Phúc CHu - Trường THCS Ngô Quyền"
+  },
+  {
+    "bus_id":268,
+    "bus_no":"HS-48",
+    "route_name":"Hoàng Bật Đạt - Trường THCS Ngô Quyền"
+  },
+  {
+    "bus_id":269,
+    "bus_no":"HS-49",
+    "route_name":"Tống Văn Hên - Trường THCS Ngô Quyền"
+  },
+  {
+    "bus_id":270,
+    "bus_no":"HS-50",
+    "route_name":"Pha Huy Ích - Cống Lở - Trường THCS Ngô Quyền"
+  },
+  {
+    "bus_id":260,
+    "bus_no":"HS-40",
+    "route_name":"Phan Đình Phúng - THCS Ngô Sĩ Liên"
+  },
+  {
+    "bus_id":263,
+    "bus_no":"HS-42",
+    "route_name":"Bàu Cát - Trường THCS Nguyễn Gia Thiều"
+  },
+  {
+    "bus_id":264,
+    "bus_no":"HS-43",
+    "route_name":"Vường Lài - Trường THCS Nguyễn Gia Thiều"
+  },
+  {
+    "bus_id":265,
+    "bus_no":"HS-45",
+    "route_name":"Tân Kỳ Tân Quý - Trường THCS Nguyễn Gia Thiều"
+  },
+  {
+    "bus_id":7,
+    "bus_no":"07",
+    "route_name":"Bến xe buýt Chợ Lớn - Gò Vấp"
+  },
+  {
+    "bus_id":35,
+    "bus_no":"150",
+    "route_name":"Bến xe buýt Chợ Lớn - Bến xe Miền Đông mới"
+  },
+  {
+    "bus_id":76,
+    "bus_no":"56",
+    "route_name":"Bến xe buýt Chợ Lớn - Bến xe Miền Đông mới"
+  },
+  {
+    "bus_id":1,
+    "bus_no":"01",
+    "route_name":"Bến Thành - Bến xe buýt Chợ Lớn"
+  },
+  {
+    "bus_id":74,
+    "bus_no":"54",
+    "route_name":"Bến xe Miền Đông - Bến xe Chợ Lớn"
+  },
+  {
+    "bus_id":5,
+    "bus_no":"05",
+    "route_name":"Bến xe buýt Chợ Lớn - Bến xe Biên Hòa"
+  },
+  {
+    "bus_id":6,
+    "bus_no":"06",
+    "route_name":"Bến xe buýt Chợ Lớn - Đại học Nông Lâm"
+  },
+  {
+    "bus_id":56,
+    "bus_no":"35",
+    "route_name":"Tuyến xe buýt Quận 1 - Quận 2"
+  },
+  {
+    "bus_id":73,
+    "bus_no":"53",
+    "route_name":"Lê Hồng Phong - Đại học Quốc gia"
+  },
+  {
+    "bus_id":128,
+    "bus_no":"88",
+    "route_name":"Bến Thành - Chợ Long Phước"
+  },
+  {
+    "bus_id":63,
+    "bus_no":"42",
+    "route_name":"Chợ Cầu Muối-Chợ nông sản Thủ Đức"
+  },
+  {
+    "bus_id":3,
+    "bus_no":"03",
+    "route_name":"Bến Thành - Thạnh Xuân"
+  },
+  {
+    "bus_id":4,
+    "bus_no":"04",
+    "route_name":"Bến Thành - Cộng Hòa - Bến xe An Sương"
+  },
+  {
+    "bus_id":199,
+    "bus_no":"109",
+    "route_name":"Bến xe buýt Sài Gòn - Sân bay Tân Sơn Nhất"
+  },
+  {
+    "bus_id":19,
+    "bus_no":"12",
+    "route_name":"Bến Xe Buýt Sài Gòn - Thác Giang Điền"
+  },
+  {
+    "bus_id":198,
+    "bus_no":"120",
+    "route_name":"Tuyến xe buýt vòng khu vực trung tâm"
+  },
+  {
+    "bus_id":374,
+    "bus_no":"156",
+    "route_name":"Bến xe buýt Sài Gòn - Ga Hòa Hưng"
+  },
+  {
+    "bus_id":405,
+    "bus_no":"171",
+    "route_name":"Bến xe Phú Chánh - Trung tâm hành chính Bình Dương - Bến Thành"
+  },
+  {
+    "bus_id":40,
+    "bus_no":"18",
+    "route_name":"Bến Thành - Chợ Hiệp Thành"
+  },
+  {
+    "bus_id":41,
+    "bus_no":"19",
+    "route_name":"Bến Thành - Khu chế xuất Linh Trung - Đại học Quốc gia"
+  },
+  {
+    "bus_id":49,
+    "bus_no":"28",
+    "route_name":"Bến xe buýt Sài Gòn - Chợ Xuân Thới Thượng"
+  },
+  {
+    "bus_id":57,
+    "bus_no":"36",
+    "route_name":"Bến Thành - Thới An"
+  },
+  {
+    "bus_id":72,
+    "bus_no":"52",
+    "route_name":"Bến Thành - Đại học Quốc gia"
+  },
+  {
+    "bus_id":88,
+    "bus_no":"61-6",
+    "route_name":"Bến Xe Buýt Sài Gòn - Khu Du lịch Đại Nam"
+  },
+  {
+    "bus_id":109,
+    "bus_no":"70-3",
+    "route_name":"Bến Xe Buýt Sài Gòn - Mộc Bài"
+  },
+  {
+    "bus_id":133,
+    "bus_no":"93",
+    "route_name":"Bến Thành - Bến xe Miền Đông mới"
+  },
+  {
+    "bus_id":210,
+    "bus_no":"D1",
+    "route_name":"Công viên 23\/9 - Thảo cầm viên"
+  },
+  {
+    "bus_id":340,
+    "bus_no":"D4",
+    "route_name":"Vinhomes Grand Park - Bến xe buýt Sài Gòn"
+  },
+  {
+    "bus_id":385,
+    "bus_no":"DL03",
+    "route_name":"Vận chuyển hành khách bằng xe 2 tầng, thoáng nóc Sài Gòn – Chợ Lớn"
+  },
+  {
+    "bus_id":386,
+    "bus_no":"DL04",
+    "route_name":"City tour Sài Gòn - Chợ Lớn"
+  },
+  {
+    "bus_id":402,
+    "bus_no":"DRCB BD",
+    "route_name":"Đưa rước từ Trung tâm hành chính Bình Dương đến Trung tâm hành chính Thành phố Hồ Chí Minh"
+  },
+  {
+    "bus_id":208,
+    "bus_no":"49",
+    "route_name":"Sân bay Tân Sơn Nhất - Quận 1"
+  },
+  {
+    "bus_id":75,
+    "bus_no":"55",
+    "route_name":"Công viên phần mềm Quang Trung - Bến xe buýt Văn Thánh"
+  },
+  {
+    "bus_id":403,
+    "bus_no":"72-2B",
+    "route_name":"Thành phố Vũng Tàu - Sân bay Tân Sơn Nhất"
+  },
+  {
+    "bus_id":347,
+    "bus_no":"156D",
+    "route_name":"Bến Thành - Ga Hòa Hưng - Bệnh viện Mắt TP.HCM"
+  },
+  {
+    "bus_id":14,
+    "bus_no":"103",
+    "route_name":"Bến xe buýt Chợ Lớn - Bến xe Ngã tư Ga"
+  },
+  {
+    "bus_id":349,
+    "bus_no":"156V",
+    "route_name":"Bến Thành - Đại học Sài Gòn Cơ sở 3 - Ga Hòa Hưng"
+  },
+  {
+    "bus_id":345,
+    "bus_no":"155",
+    "route_name":"Bến xe buýt Sài Gòn - Nhà hát Thành phố"
+  },
+  {
+    "bus_id":65,
+    "bus_no":"44",
+    "route_name":"Cảng Quận 4 - Bình Quới"
+  },
+  {
+    "bus_id":15,
+    "bus_no":"104",
+    "route_name":"Bến xe An Sương - Bến xe buýt Văn Thánh"
+  },
+  {
+    "bus_id":371,
+    "bus_no":"DL02",
+    "route_name":"City Tour Sài Gòn - Gia Định"
+  },
+  {
+    "bus_id":336,
+    "bus_no":"DL01",
+    "route_name":"Tuyến xe  du lịch vòng khu vực trung tâm thành phố"
+  },
+  {
+    "bus_id":70,
+    "bus_no":"50",
+    "route_name":"Đại học Bách khoa - Đại học Quốc gia"
+  },
+  {
+    "bus_id":384,
+    "bus_no":"MRT1",
+    "route_name":"Bến Thành - Suối Tiên"
+  },
+  {
+    "bus_id":259,
+    "bus_no":"HS_39",
+    "route_name":"Sông Đà - Trường THCS Ngô Sĩ Liên"
+  },
+  {
+    "bus_id":256,
+    "bus_no":"HS-36",
+    "route_name":"Phân Hiệu 2 - Trường THCS Ngô Sĩ Liên"
+  },
+  {
+    "bus_id":257,
+    "bus_no":"HS-37",
+    "route_name":"Nguyễn Văn Công - Trường THCS Ngô Sĩ Liên"
+  },
+  {
+    "bus_id":258,
+    "bus_no":"HS-38",
+    "route_name":"Tản Viên - THCS Ngô Sĩ Liên"
+  },
+  {
+    "bus_id":262,
+    "bus_no":"HS-41",
+    "route_name":"Nguyễn SỸ Sách - Trường THCS Ngô Sĩ Liên"
+  },
+  {
+    "bus_id":261,
+    "bus_no":"HS-44",
+    "route_name":"Phổ Quang - Trường THCS Nguyễn Gia Thiều"
+  },
+  {
+    "bus_id":310,
+    "bus_no":"HS-90",
+    "route_name":"Trường THCS Bạch Đằng - Cung Văn Hóa Lao Động"
+  },
+  {
+    "bus_id":311,
+    "bus_no":"HS-91",
+    "route_name":"Trường THCS Hai Bà Trưng - Cung Văn Hóa Lao Động"
+  },
+  {
+    "bus_id":320,
+    "bus_no":"HS-100",
+    "route_name":"Trường Tiểu Học Lê Ngọc Hân(Nguyễn Du) - Tô Hiến Thành"
+  },
+  {
+    "bus_id":321,
+    "bus_no":"HS-101",
+    "route_name":"Trường Tiểu Học Lê Ngọc Hân - Bạch Mã"
+  },
+  {
+    "bus_id":344,
+    "bus_no":"159",
+    "route_name":"Chung cư Ngô Tất Tố - Ngã tư Hàng Xanh"
+  },
+  {
+    "bus_id":373,
+    "bus_no":"157",
+    "route_name":"Bến xe buýt Văn Thánh - Chung cư Đức Khải"
+  },
+  {
+    "bus_id":354,
+    "bus_no":"157D",
+    "route_name":"Bến xe buýt Văn Thánh – Cục thuế Thành phố Hồ Chí Minh – Chung cư Đức Khải"
+  },
+  {
+    "bus_id":352,
+    "bus_no":"157V",
+    "route_name":"Bến xe buýt Văn Thánh – Chung cư Đức Khải – Cục thuế Thành phố Hồ Chí Minh"
+  },
+  {
+    "bus_id":372,
+    "bus_no":"158",
+    "route_name":"Bến xe buýt Văn Thánh - Cư xá Thanh Đa"
+  },
+  {
+    "bus_id":365,
+    "bus_no":"160",
+    "route_name":"Ga Văn Thánh - Vinhomes Central Park "
+  },
+  {
+    "bus_id":364,
+    "bus_no":"161",
+    "route_name":"Bến xe buýt Văn Thánh – Bến xe Ngã tư Ga"
+  },
+  {
+    "bus_id":64,
+    "bus_no":"43",
+    "route_name":"Bến xe Miền Đông - Phà Cát Lái"
+  },
+  {
+    "bus_id":83,
+    "bus_no":"60-4",
+    "route_name":"Bến xe Miền Đông - Khu công nghiệp Sông Mây"
+  },
+  {
+    "bus_id":383,
+    "bus_no":"67",
+    "route_name":"Bến xe Miền Đông (cũ) - Bến xe Miền Đông (mới)"
+  },
+  {
+    "bus_id":356,
+    "bus_no":"154",
+    "route_name":"Khu dân cư Thạnh Mỹ Lợi - Masteri An Phú"
+  },
+  {
+    "bus_id":397,
+    "bus_no":"154D",
+    "route_name":"Khu dân cư Thạnh Mỹ Lợi - Ga Metro Rạch Chiếc - Masteri An Phú"
+  },
+  {
+    "bus_id":398,
+    "bus_no":"154V",
+    "route_name":"Khu dân cư Thạnh Mỹ Lợi - Masteri An Phú - Ga Metro Rạch Chiếc "
+  },
+  {
+    "bus_id":312,
+    "bus_no":"HS-92",
+    "route_name":"Trường Tiểu Học Nguyễn Bỉnh Khiêm - Lê Văn Thịnh"
+  },
+  {
+    "bus_id":313,
+    "bus_no":"HS-93",
+    "route_name":"Thảo Điền - Trường Tiểu Học Nguyễn Bỉnh Khiêm"
+  },
+  {
+    "bus_id":314,
+    "bus_no":"HS-94",
+    "route_name":"Trường Tiểu Học Nguyễn Bỉnh Khiêm  - Chung Cư Hoàng Anh Gia Lai"
+  },
+  {
+    "bus_id":315,
+    "bus_no":"HS-95",
+    "route_name":"Trường Tiểu Học Nguyễn Bỉnh Khiêm - Hiệp Bình"
+  },
+  {
+    "bus_id":316,
+    "bus_no":"HS-96",
+    "route_name":"Trường Tiểu Học Nguyễn Bỉnh Khiêm - Phan Văn Trị"
+  },
+  {
+    "bus_id":337,
+    "bus_no":"SWB1",
+    "route_name":"Bạch Đằng - Linh Đông"
+  },
+  {
+    "bus_id":375,
+    "bus_no":"153",
+    "route_name":"Bến tàu thủy Bình An – Đường Liên Phường"
+  },
+  {
+    "bus_id":50,
+    "bus_no":"29",
+    "route_name":"Phà Cát Lái - Chợ nông sản Thủ Đức"
+  },
+  {
+    "bus_id":137,
+    "bus_no":"99",
+    "route_name":"Chợ Thạnh Mỹ Lợi - Đại học Quốc gia"
+  },
+  {
+    "bus_id":116,
+    "bus_no":"76",
+    "route_name":"Long Phước - Bến xe Miền Đông mới"
+  },
+  {
+    "bus_id":69,
+    "bus_no":"48",
+    "route_name":"Bến xe buýt Tân Phú - Chợ Hiệp Thành"
+  },
+  {
+    "bus_id":20,
+    "bus_no":"122",
+    "route_name":"Bến xe An Sương - Tân Quy"
+  },
+  {
+    "bus_id":209,
+    "bus_no":"15-9",
+    "route_name":"Bến xe Miền Đông - Bến xe An Sương"
+  },
+  {
+    "bus_id":54,
+    "bus_no":"33",
+    "route_name":"Bến xe An Sương - Suối Tiên - Đại học Quốc gia"
+  },
+  {
+    "bus_id":86,
+    "bus_no":"61-3",
+    "route_name":"Bến xe An Sương - Thủ Dầu Một"
+  },
+  {
+    "bus_id":97,
+    "bus_no":"62-5",
+    "route_name":"Bến xe An Sương - Bến xe Hậu Nghĩa"
+  },
+  {
+    "bus_id":114,
+    "bus_no":"74",
+    "route_name":"Bến xe An Sương - Bến xe Củ Chi"
+  },
+  {
+    "bus_id":125,
+    "bus_no":"85",
+    "route_name":"Bến xe An Sương - Khu công nghiệp Nhị Xuân"
+  },
+  {
+    "bus_id":135,
+    "bus_no":"95",
+    "route_name":"Bến xe Miền Đông - KCN Tân Bình"
+  },
+  {
+    "bus_id":45,
+    "bus_no":"24",
+    "route_name":"Bến xe Miền Đông - Hóc Môn"
+  },
+  {
+    "bus_id":245,
+    "bus_no":"HS-27",
+    "route_name":"Hoàng Bật Đạt - Trường ThCS Hoàng Hoa Thám"
+  },
+  {
+    "bus_id":246,
+    "bus_no":"HS-28",
+    "route_name":"Tống Văn Hên - Trường THCS Hoàng Hoa Thám"
+  },
+  {
+    "bus_id":247,
+    "bus_no":"HS-29",
+    "route_name":"Hoàng Bật Đạt - Nguyễn Phúc CHu - Trường THCS Hoàng Hoa Thám"
+  },
+  {
+    "bus_id":248,
+    "bus_no":"HS-30",
+    "route_name":"Tống Văn Hên - Hoàng Bật Đạt - Trường THCS Hoàng Hoa Thám"
+  },
+  {
+    "bus_id":249,
+    "bus_no":"HS-31",
+    "route_name":"Phan Huy Ích - THCS Hoàng Hoa Thám"
+  },
+  {
+    "bus_id":251,
+    "bus_no":"HS-32",
+    "route_name":"PhanHuy Ích - Trường THCS Hoàng Hoa Thám"
+  },
+  {
+    "bus_id":250,
+    "bus_no":"HS-33",
+    "route_name":"Huỳnh Văn Nghệ - Trường THCS Hoàng Hoa Thám"
+  },
+  {
+    "bus_id":252,
+    "bus_no":"HS-34",
+    "route_name":"Huỳnh Văn Nghệ- Trường THCS Hoàng Hoa Thám"
+  },
+  {
+    "bus_id":253,
+    "bus_no":"HS-35",
+    "route_name":"PhanHuy Ích - Trường THCS Hoàng Hoa Thám"
+  },
+  {
+    "bus_id":61,
+    "bus_no":"40",
+    "route_name":"Bến xe Miền Đông- Bến xe Ngã Tư Ga"
+  },
+  {
+    "bus_id":31,
+    "bus_no":"146",
+    "route_name":"Bến xe Miền Đông - Chợ Hiệp Thành"
+  },
+  {
+    "bus_id":338,
+    "bus_no":"VB01",
+    "route_name":"VinHome Grand Park - Trung tâm thương mại Emart"
+  },
+  {
+    "bus_id":339,
+    "bus_no":"VB02",
+    "route_name":"VinHome Grand Park - Sân bay Tân Sơn Nhất"
+  },
+  {
+    "bus_id":90,
+    "bus_no":"61-8",
+    "route_name":"Thủ Dầu Một - Bến xe Miền Đông"
+  },
+  {
+    "bus_id":129,
+    "bus_no":"89",
+    "route_name":"Đại học Nông Lâm - Bến tàu Hiệp Bình Chánh"
+  },
+  {
+    "bus_id":77,
+    "bus_no":"57",
+    "route_name":"Chợ Phước Bình - Trường Trung học Phổ thông Hiệp Bình"
+  },
+  {
+    "bus_id":280,
+    "bus_no":"HS-60",
+    "route_name":"Bình Triệu - Trường THPT Đào Sơn Tây"
+  },
+  {
+    "bus_id":281,
+    "bus_no":"HS-61",
+    "route_name":"Hiệp Bình- Trường THPT Đào Sơn Tây"
+  },
+  {
+    "bus_id":28,
+    "bus_no":"141",
+    "route_name":"Khu du lịch BCR - Long Trường - Khu chế xuất Linh Trung II"
+  },
+  {
+    "bus_id":378,
+    "bus_no":"168",
+    "route_name":"Đại học Sư phạm Kỹ thuật - Ngã tư Bình Thái"
+  },
+  {
+    "bus_id":355,
+    "bus_no":"168D",
+    "route_name":"Đại học Sư phạm kỹ thuật Thành phố - Ga Metro Thủ Đức - Nhà Thiếu nhi Thành phố Thủ Đức"
+  },
+  {
+    "bus_id":85,
+    "bus_no":"61-1",
+    "route_name":"Thủ Đức - Dĩ An"
+  },
+  {
+    "bus_id":379,
+    "bus_no":"169",
+    "route_name":"Vincom Thủ Đức - Ngã tư Tây Hòa"
+  },
+  {
+    "bus_id":368,
+    "bus_no":"169D",
+    "route_name":"Ga Metro Bình Thái - Vincom Thủ Đức - Cảng Phúc Long"
+  },
+  {
+    "bus_id":369,
+    "bus_no":"169V",
+    "route_name":"Ga Metro Bình Thái - Cảng Phúc Long - Vincom Thủ Đức"
+  },
+  {
+    "bus_id":367,
+    "bus_no":"168V",
+    "route_name":"Nhà Thiếu nhi Thành phố Thủ Đức - Ga Metro Thủ Đức - Đại học Sư phạm kỹ thuật Thành phố"
+  },
+  {
+    "bus_id":362,
+    "bus_no":"162",
+    "route_name":"Chung cư Man Thiện - Trường Trung học cơ sở Hoa Lư"
+  },
+  {
+    "bus_id":392,
+    "bus_no":"162V",
+    "route_name":"Ga Metro Bình Thái - Trường Trung học cơ sở Hoa Lư - Chung cư Man Thiện"
+  },
+  {
+    "bus_id":391,
+    "bus_no":"162D",
+    "route_name":"Ga Metro Bình Thái - Chung cư Man Thiện - Trường Trung học cơ sở Hoa Lư"
+  },
+  {
+    "bus_id":361,
+    "bus_no":"163",
+    "route_name":"Cao đẳng Công Thương - Trung học Cơ sở Phước Bình"
+  },
+  {
+    "bus_id":394,
+    "bus_no":"163V",
+    "route_name":"Ga Metro Bình Thái - Cao đẳng Công Thương - Trường Trung học cơ sở Phước Bình"
+  },
+  {
+    "bus_id":393,
+    "bus_no":"163D",
+    "route_name":"Ga Metro Bình Thái - Trường Trung học cơ sở Phước Bình - Cao đẳng Công Thương"
+  },
+  {
+    "bus_id":275,
+    "bus_no":"HS-55",
+    "route_name":"Nguyễn Xiển - Trường THCS Hoa Lư"
+  },
+  {
+    "bus_id":276,
+    "bus_no":"HS-56",
+    "route_name":"Đặng Văn Bi - Trường THPT Đào Sơn Tây"
+  },
+  {
+    "bus_id":283,
+    "bus_no":"HS-63",
+    "route_name":"Lê Văn Việt - Trường THPT Đào Sơn Tây"
+  },
+  {
+    "bus_id":359,
+    "bus_no":"165",
+    "route_name":"Đại học Nông Lâm - Khu Công nghệ cao"
+  },
+  {
+    "bus_id":341,
+    "bus_no":"VB04",
+    "route_name":"VinHome Grand Park - Bến xe Miền Đông mới"
+  },
+  {
+    "bus_id":118,
+    "bus_no":"78",
+    "route_name":"Bến xe buýt Thới An - Ngã ba Giồng - Cầu Lớn"
+  },
+  {
+    "bus_id":78,
+    "bus_no":"58",
+    "route_name":"Bến xe Ngã tư Ga - Khu công nghiệp Đông Nam"
+  },
+  {
+    "bus_id":277,
+    "bus_no":"HS-57",
+    "route_name":"Ngã 4 Bình Phước - Trường THPT Đào Sơn Tây"
+  },
+  {
+    "bus_id":278,
+    "bus_no":"HS-58",
+    "route_name":"Phú Châu - Trường THPT Đào Sơn Tây"
+  },
+  {
+    "bus_id":279,
+    "bus_no":"HS-59",
+    "route_name":"Lê Thị Hoa - Trường THPT Đào Sơn Tây"
+  },
+  {
+    "bus_id":346,
+    "bus_no":"61-9",
+    "route_name":"Thủ Dầu Một - Suối Tiên - Bến xe Miền Đông Mới"
+  },
+  {
+    "bus_id":377,
+    "bus_no":"167",
+    "route_name":"Đại học Nông Lâm - Khu chế xuất Linh Trung 1"
+  },
+  {
+    "bus_id":353,
+    "bus_no":"167V",
+    "route_name":"Đại học Nông Lâm - Ga Metro Khu Công nghệ cao - Khu Chế xuất Linh Trung 1"
+  },
+  {
+    "bus_id":350,
+    "bus_no":"167D",
+    "route_name":"Đại học Nông Lâm - Khu Chế xuất Linh Trung 1 - Ga Metro Khu Công nghệ cao"
+  },
+  {
+    "bus_id":360,
+    "bus_no":"164",
+    "route_name":"Đại học Nông Lâm - Chung cư Topaz"
+  },
+  {
+    "bus_id":395,
+    "bus_no":"164D",
+    "route_name":"Đại học Nông Lâm - Ga Metro Khu Công nghệ cao - Chung cư Topaz"
+  },
+  {
+    "bus_id":396,
+    "bus_no":"164V",
+    "route_name":"Đại học Nông Lâm - Chung cư Topaz - Ga Metro Khu Công nghệ cao"
+  },
+  {
+    "bus_id":215,
+    "bus_no":"60-2",
+    "route_name":"Đại học Nông Lâm - Bến xe Phú Túc"
+  },
+  {
+    "bus_id":358,
+    "bus_no":"166V",
+    "route_name":"Khu A - Đại học Bách Khoa - Ga Đại học Quốc Gia"
+  },
+  {
+    "bus_id":381,
+    "bus_no":"60-5",
+    "route_name":"Bến xe buýt Đại học Quốc Gia – Bến xe Biên Hòa"
+  },
+  {
+    "bus_id":342,
+    "bus_no":"VB05",
+    "route_name":"VinHome Grand Park - Bến xe Miền Đông mới"
+  },
+  {
+    "bus_id":282,
+    "bus_no":"HS-62",
+    "route_name":"Phạm Văn Đồng - Trường THPT Đào Sơn Tây"
+  },
+  {
+    "bus_id":284,
+    "bus_no":"HS-64",
+    "route_name":"Võ Văn Ngân - Trường THPT Đào Sơn Tây"
+  },
+  {
+    "bus_id":376,
+    "bus_no":"166",
+    "route_name":"Đại học Quốc Gia - Suối Tiên"
+  },
+  {
+    "bus_id":357,
+    "bus_no":"166D",
+    "route_name":"Khu A - Ga Đại học Quốc Gia - Đại học Bách Khoa"
+  },
+  {
+    "bus_id":382,
+    "bus_no":"60-7",
+    "route_name":"Bến xe Miền Đông mới - Bến xe Biên Hòa"
+  },
+  {
+    "bus_id":351,
+    "bus_no":"61-05",
+    "route_name":"Thủ Dầu Một - Tân Vạn - Bến xe Miền Đông mới"
+  },
+  {
+    "bus_id":348,
+    "bus_no":"61-77",
+    "route_name":"Thành phố mới - Thành phố Dĩ An - Bến xe Miền Đông mới"
+  },
+  {
+    "bus_id":271,
+    "bus_no":"HS-51",
+    "route_name":"Nhà Thờ Cao Thái - Trường Tiểu Học Tạ Uyên"
+  },
+  {
+    "bus_id":272,
+    "bus_no":"HS-52",
+    "route_name":"NHà Thờ Minh Đức - Trường Tiểu Học Tạ Uyên"
+  },
+  {
+    "bus_id":273,
+    "bus_no":"HS-53",
+    "route_name":"Long Sơn - Trường THCS Long Bình"
+  },
+  {
+    "bus_id":274,
+    "bus_no":"HS-54",
+    "route_name":"Nhà Thờ Cao Thái - Trường THCS Long Bình"
+  },
+  {
+    "bus_id":95,
+    "bus_no":"62-3",
+    "route_name":"Bến xe Củ Chi - Bến xe Hậu Nghĩa"
+  },
+  {
+    "bus_id":123,
+    "bus_no":"83",
+    "route_name":"Bến xe Củ Chi - Cầu Thầy Cai"
+  },
+  {
+    "bus_id":11,
+    "bus_no":"100",
+    "route_name":"Bến xe Củ Chi - Cầu Tân Thái"
+  },
+  {
+    "bus_id":16,
+    "bus_no":"107",
+    "route_name":"Bến xe Củ Chi - Bố Heo"
+  },
+  {
+    "bus_id":107,
+    "bus_no":"70-1",
+    "route_name":" Bến xe Củ Chi - Bến xe Tây Ninh"
+  },
+  {
+    "bus_id":108,
+    "bus_no":"70-2",
+    "route_name":"Bến xe Củ Chi - Tòa Thánh - Khu du lịch Núi Bà Đen"
+  },
+  {
+    "bus_id":23,
+    "bus_no":"126",
+    "route_name":"Bến xe Củ Chi - Bình Mỹ"
+  },
+  {
+    "bus_id":213,
+    "bus_no":"63",
+    "route_name":"Bến xe Củ Chi - Phân hiệu II Trường Quân sự Thành phố"
+  },
+  {
+    "bus_id":119,
+    "bus_no":"79",
+    "route_name":"Bến xe Củ Chi - Đền Bến Dược"
+  },
+  {
+    "bus_id":127,
+    "bus_no":"87",
+    "route_name":"Bến xe Củ Chi - An Nhơn Tây"
+  },
+  {
+    "bus_id":226,
+    "bus_no":"HS-09",
+    "route_name":"Đường 21 - Trường Tiểu Học Tân Tiến"
+  },
+  {
+    "bus_id":227,
+    "bus_no":"HS-10",
+    "route_name":"Đường 15 - Trường Tiểu Học Tân Tiến"
+  },
+  {
+    "bus_id":228,
+    "bus_no":"HS-11",
+    "route_name":"Đường 27 - Trường Tiểu Học Tân Tiến"
+  },
+  {
+    "bus_id":229,
+    "bus_no":"HS-12",
+    "route_name":"Liêu Bình Hương - Trường THCS Tân Tiến"
+  },
+  {
+    "bus_id":333,
+    "bus_no":"200",
+    "route_name":"Tuyến Tăng Cường 1"
+  },
+  {
+    "bus_id":334,
+    "bus_no":"300",
+    "route_name":"Tuyến Tăng Cường 2"
+  },
+  {
+    "bus_id":106,
+    "bus_no":"70",
+    "route_name":"Tân Quy - Bến Súc"
+  },
+  {
+    "bus_id":322,
+    "bus_no":"HS-102",
+    "route_name":"Trường Tiểu Học Trung An - Đường 458"
+  },
+  {
+    "bus_id":323,
+    "bus_no":"HS-103",
+    "route_name":"Trường Tiểu Học Trung An - Đường 457"
+  },
+  {
+    "bus_id":324,
+    "bus_no":"HS-104",
+    "route_name":"Trường Tiểu Học Trung An - Bàu Trâm"
+  },
+  {
+    "bus_id":325,
+    "bus_no":"HS-106",
+    "route_name":"Tỉnh Lộ 8 -Trường Tiểu Học Trung An"
+  },
+  {
+    "bus_id":326,
+    "bus_no":"HS-107",
+    "route_name":"Tỉnh Lộ 8 -Trung An - Trường Tiểu Học Trung An"
+  },
+  {
+    "bus_id":327,
+    "bus_no":"HS-108",
+    "route_name":"Trung An - Trường Tiểu Học Trung An"
+  },
+  {
+    "bus_id":332,
+    "bus_no":"HS-113",
+    "route_name":"Trường THCS Trung An - Đường 457"
+  },
+  {
+    "bus_id":328,
+    "bus_no":"HS-109",
+    "route_name":"TRường THCS Trung An - Bàu Trâm"
+  },
+  {
+    "bus_id":329,
+    "bus_no":"HS-110",
+    "route_name":"Trường THCS Trung An - Đường 457"
+  },
+  {
+    "bus_id":89,
+    "bus_no":"61-7",
+    "route_name":"Bến đò Bình Mỹ - Bến xe Bình Dương"
+  },
+  {
+    "bus_id":225,
+    "bus_no":"HS-08",
+    "route_name":"Nguyễn Thị Nê - Trường THCS Phú Hòa Đông"
+  },
+  {
+    "bus_id":224,
+    "bus_no":"HS-0-7",
+    "route_name":"Ngã 3 Bàu Lách - Trường THCS Phú Hòa Đông"
+  },
+  {
+    "bus_id":330,
+    "bus_no":"HS-111",
+    "route_name":"Trường THCS Trung An - Đường 468"
+  },
+  {
+    "bus_id":331,
+    "bus_no":"HS-112",
+    "route_name":"Trường THCS Trung An - Đường 468"
+  },
+  {
+    "bus_id":110,
+    "bus_no":"70-5",
+    "route_name":"Bố Heo - Lộc Hưng"
+  },
+  {
+    "bus_id":87,
+    "bus_no":"61-4",
+    "route_name":"Bến Dược - Dầu Tiếng"
+  }
+]

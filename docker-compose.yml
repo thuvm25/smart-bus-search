@@ -1,0 +1,45 @@
+version: "3.9"
+
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: smart-bus-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms1g -Xmx1g
+    ports:
+      - "9200:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+
+  backend:
+    build: ./backend
+    container_name: smart-bus-backend
+    depends_on:
+      - elasticsearch
+    environment:
+      ES_HOST: http://elasticsearch:9200
+      ES_INDEX: bus_waypoints
+    ports:
+      - "8000:8000"
+
+  ui:
+    image: python:3.11-slim
+    container_name: smart-bus-ui
+    depends_on:
+      - backend
+    working_dir: /app
+    environment:
+      BACKEND_URL: http://backend:8000
+    volumes:
+      - ./ui:/app
+    command: >
+      bash -c "pip install -r requirements.txt &&
+               streamlit run streamlit_app.py --server.port=8501 --server.address=0.0.0.0"
+    ports:
+      - "8501:8501"
+
+volumes:
+  es-data:
+
