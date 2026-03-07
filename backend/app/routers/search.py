@@ -63,53 +63,62 @@ async def search_active(
         return {"items": [], "total": 0}
 
     try:
-        # For now, get all buses as a demo (ignore time window)
-        # TODO: Fix datetime filtering once data has recent timestamps
+        # Return one latest waypoint per vehicle.
         query = {
             "query": {
                 "match_all": {}
             },
             "size": 1000,
+            "sort": [
+                {
+                    "datetime": {
+                        "order": "desc",
+                        "unmapped_type": "date",
+                    }
+                }
+            ],
+            "collapse": {"field": "vehicle"},
             "_source": ["vehicle", "datetime", "location", "speed", "ignition"]
         }
 
         response = es.search(index="bus_waypoints", **query)
 
-        # Get unique vehicles with their latest data
-        vehicles = {}
+        items = []
         for hit in response.get("hits", {}).get("hits", []):
             source = hit["_source"]
             vehicle_id = source.get("vehicle")
-            if vehicle_id not in vehicles:
-                loc = source.get("location", {})
+            loc = source.get("location", {})
 
-                # Enrich with route info
-                route_info = get_route_info(vehicle_id)
+            # Enrich with route info
+            route_info = get_route_info(vehicle_id)
 
-                vehicle_data = {
-                    "vehicle": vehicle_id,
-                    "datetime": source.get("datetime"),
-                    "lat": loc.get("lat"),
-                    "lon": loc.get("lon"),
-                    "speed": source.get("speed"),
-                    "ignition": source.get("ignition"),
-                }
+            vehicle_data = {
+                "vehicle": vehicle_id,
+                "datetime": source.get("datetime"),
+                "lat": loc.get("lat"),
+                "lon": loc.get("lon"),
+                "speed": source.get("speed"),
+                "ignition": source.get("ignition"),
+            }
 
-                if route_info:
-                    mapping_route_id = route_info.get("route_id")
-                    mapping_route_no = route_info.get("route_no")
-                    vehicle_data["mapping_route_id"] = mapping_route_id
-                    vehicle_data["mapping_route_no"] = mapping_route_no
-                    if mapping_route_no:
-                        vehicle_data["route_name"] = f"Tuyen {mapping_route_no}"
+            if route_info:
+                mapping_route_id = route_info.get("route_id")
+                mapping_route_no = route_info.get("route_no")
+                route_name = route_info.get("route_name")
+                vehicle_data["mapping_route_id"] = mapping_route_id
+                vehicle_data["mapping_route_no"] = mapping_route_no
+                if route_name:
+                    vehicle_data["route_name"] = route_name
+                elif mapping_route_no:
+                    vehicle_data["route_name"] = f"Tuyen {mapping_route_no}"
 
-                stop_name = get_nearest_stop_name(vehicle_data["lat"], vehicle_data["lon"])
-                if stop_name:
-                    vehicle_data["stop_name"] = stop_name
+            stop_name = get_nearest_stop_name(vehicle_data["lat"], vehicle_data["lon"])
+            if stop_name:
+                vehicle_data["stop_name"] = stop_name
 
-                vehicles[vehicle_id] = vehicle_data
+            items.append(vehicle_data)
 
-        return {"items": list(vehicles.values()), "total": len(vehicles)}
+        return {"items": items, "total": len(items)}
     except Exception as e:
         print(f"Search active error: {e}")
         return {"items": [], "total": 0}
@@ -160,9 +169,12 @@ async def search_vehicle_trace(
         if route_info:
             mapping_route_id = route_info.get("route_id")
             mapping_route_no = route_info.get("route_no")
+            route_name = route_info.get("route_name")
             result["mapping_route_id"] = mapping_route_id
             result["mapping_route_no"] = mapping_route_no
-            if mapping_route_no:
+            if route_name:
+                result["route_name"] = route_name
+            elif mapping_route_no:
                 result["route_name"] = f"Tuyen {mapping_route_no}"
 
         return result

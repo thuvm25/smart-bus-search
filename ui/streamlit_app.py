@@ -17,6 +17,7 @@ st.title("HCMC Bus Visual Search")
 st.caption("Visual demo for bus movement, nearest stops, and route labels")
 
 LIGHT_MAP_STYLE = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
+BUS_ICON_URL = "https://img.icons8.com/color/96/bus.png"
 
 
 def _speed_band(speed: float | None) -> str:
@@ -60,6 +61,28 @@ def _make_circle_polygon(lat: float, lon: float, radius_m: int, points: int = 72
         d_lon = (radius_m * math.cos(theta)) / meters_per_deg_lon
         polygon.append([lon + d_lon, lat + d_lat])
     return polygon
+
+
+def _zoom_for_radius(radius_m: int, lat: float) -> float:
+    """Pick a map zoom so the nearby search circle is comfortably visible."""
+    if radius_m <= 200:
+        base_zoom = 15.5
+    elif radius_m <= 400:
+        base_zoom = 14.8
+    elif radius_m <= 700:
+        base_zoom = 14.2
+    elif radius_m <= 1000:
+        base_zoom = 13.8
+    elif radius_m <= 1500:
+        base_zoom = 13.3
+    elif radius_m <= 2200:
+        base_zoom = 12.9
+    else:
+        base_zoom = 12.5
+
+    # Slight latitude compensation to keep circle sizing more consistent.
+    lat_factor = max(0.85, min(1.1, math.cos(math.radians(lat)) / 0.95))
+    return max(10.5, min(16.5, base_zoom + (lat_factor - 1.0) * 0.8))
 
 
 def _normalize_items(mode_name: str, payload: dict) -> pd.DataFrame:
@@ -132,25 +155,48 @@ def _render_points_map(
 ) -> None:
     map_center_lat = float(center_lat) if center_lat is not None else float(df["lat"].mean())
     map_center_lon = float(center_lon) if center_lon is not None else float(df["lon"].mean())
+    zoom = _zoom_for_radius(int(radius_m), map_center_lat) if radius_m is not None else 11
 
     view_state = pdk.ViewState(
         latitude=map_center_lat,
         longitude=map_center_lon,
-        zoom=11,
+        zoom=zoom,
         pitch=0,
     )
     layers = []
 
-    point_layer = pdk.Layer(
+    icon_df = df.copy()
+    icon_df["icon_data"] = [
+        {
+            "url": BUS_ICON_URL,
+            "width": 96,
+            "height": 96,
+            "anchorY": 96,
+        }
+    ] * len(icon_df)
+
+    bus_icon_layer = pdk.Layer(
+        "IconLayer",
+        data=icon_df,
+        get_icon="icon_data",
+        get_position="[lon, lat]",
+        get_size=4,
+        size_scale=8,
+        size_min_pixels=22,
+        pickable=True,
+    )
+    layers.append(bus_icon_layer)
+
+    bus_shadow_layer = pdk.Layer(
         "ScatterplotLayer",
         data=df,
         get_position="[lon, lat]",
-        get_fill_color="color",
-        get_radius=35,
-        pickable=True,
-        opacity=0.85,
+        get_fill_color=[50, 90, 160, 90],
+        get_radius=16,
+        pickable=False,
+        opacity=0.5,
     )
-    layers.append(point_layer)
+    layers.append(bus_shadow_layer)
 
     if center_lat is not None and center_lon is not None:
         center_layer = pdk.Layer(

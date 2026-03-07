@@ -26,6 +26,7 @@ services:
     volumes:
       - ./data:/app/data:ro
       - ./bus_stops.json:/app/bus_stops.json:ro
+      - ./bus_routes.json:/app/bus_routes.json:ro
 
   ui:
     image: python:3.11-slim

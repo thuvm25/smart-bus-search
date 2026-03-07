@@ -36,7 +36,7 @@ def search_nearby_stub(
         query = {
             "query": {
                 "bool": {
-                    "must": [
+                    "filter": [
                         {
                             "geo_distance": {
                                 "distance": f"{radius_m}m",
@@ -51,6 +51,12 @@ def search_nearby_stub(
             },
             "sort": [
                 {
+                    "datetime": {
+                        "order": "desc",
+                        "unmapped_type": "date",
+                    }
+                },
+                {
                     "_geo_distance": {
                         "location": {"lat": lat, "lon": lon},
                         "order": "asc",
@@ -58,6 +64,12 @@ def search_nearby_stub(
                     }
                 }
             ],
+            "collapse": {"field": "vehicle"},
+            "aggs": {
+                "unique_vehicles": {
+                    "cardinality": {"field": "vehicle"}
+                }
+            },
             "size": effective_limit,
             "_source": ["vehicle", "datetime", "location", "speed", "ignition", "aircon"]
         }
@@ -87,10 +99,12 @@ def search_nearby_stub(
             if route_info:
                 mapping_route_id = route_info.get("route_id")
                 mapping_route_no = route_info.get("route_no")
+                route_name = route_info.get("route_name")
                 item["mapping_route_id"] = mapping_route_id
                 item["mapping_route_no"] = mapping_route_no
-                if mapping_route_no:
-                    # Human-readable label without relying on bus_routes dataset
+                if route_name:
+                    item["route_name"] = route_name
+                elif mapping_route_no:
                     item["route_name"] = f"Tuyen {mapping_route_no}"
 
             stop_name = get_nearest_stop_name(item["y"], item["x"])
@@ -99,11 +113,8 @@ def search_nearby_stub(
 
             items.append(item)
 
-        total_hits_raw = response.get("hits", {}).get("total", {})
-        if isinstance(total_hits_raw, dict):
-            total_hits = int(total_hits_raw.get("value", len(items)))
-        else:
-            total_hits = int(total_hits_raw or len(items))
+        unique_vehicles = response.get("aggregations", {}).get("unique_vehicles", {}).get("value")
+        total_hits = int(unique_vehicles if unique_vehicles is not None else len(items))
 
         return NearbySearchResponse(
             items=items,
