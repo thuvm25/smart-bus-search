@@ -3,7 +3,37 @@ import os
 from dotenv import load_dotenv
 from elasticsearch import Elasticsearch
 
-from backend.app.models.mapping import BUS_WAYPOINT_MAPPING
+
+# Elasticsearch index mapping for bus GPS waypoints
+BUS_WAYPOINT_MAPPING = {
+    "mappings": {
+        "properties": {
+            "vehicle": {"type": "keyword"},
+            "datetime": {
+                "type": "date",
+                "format": "yyyy-MM-dd HH:mm:ss||epoch_millis||strict_date_optional_time"
+            },
+            "x": {"type": "float"},  # longitude
+            "y": {"type": "float"},  # latitude
+            "location": {"type": "geo_point"},
+            "speed": {"type": "float"},
+            "ignition": {"type": "boolean"},
+            "aircon": {"type": "boolean"},
+            "working": {"type": "boolean"},
+            "driver": {"type": "keyword"},
+            "route_id": {"type": "keyword"},
+            "route_no": {"type": "keyword"},
+            "route_name": {
+                "type": "text",
+                "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
+            },
+            "stop_name": {
+                "type": "text",
+                "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
+            },
+        }
+    }
+}
 
 
 def main() -> None:
@@ -18,7 +48,7 @@ def main() -> None:
         return
 
     es.indices.create(index=es_index, **BUS_WAYPOINT_MAPPING)
-    print(f"Đã tạo index '{es_index}' với mapping bus_waypoints.")
+    print(f"✓ Đã tạo index '{es_index}' với mapping bus_waypoints.")
 
 
 if __name__ == "__main__":

@@ -23,6 +23,9 @@ services:
       ES_INDEX: bus_waypoints
     ports:
       - "8000:8000"
+    volumes:
+      - ./data:/app/data:ro
+      - ./bus_stops.json:/app/bus_stops.json:ro
 
   ui:
     image: python:3.11-slim

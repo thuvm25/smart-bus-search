@@ -2,5 +2,5 @@ fastapi
 uvicorn[standard]
 pydantic
 pydantic-settings
-elasticsearch
+elasticsearch>=8.0,<9.0
 python-dotenv
