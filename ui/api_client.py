@@ -33,6 +33,8 @@ def post_json(path: str, payload: dict) -> dict:
     return resp.json()
 
 
+# ─── Search ──────────────────────────────────────────────────────────
+
 def search_nearby(lat: float, lon: float, radius_m: int = 500, limit: int | None = None) -> dict:
     """Search for nearby buses using GET."""
     params = {"lat": lat, "lon": lon, "radius_m": radius_m}
@@ -41,14 +43,40 @@ def search_nearby(lat: float, lon: float, radius_m: int = 500, limit: int | None
     return get_json("search/nearby", params)
 
 
-def search_active(minutes: int) -> dict:
-    """Search for active buses in the last N minutes."""
-    payload = {"time_window_minutes": minutes}
-    return post_json("search/active", payload)
+def search_active(minutes: int = 0) -> dict:
+    """Search for active buses. minutes=0 means all time (historical data)."""
+    return post_json("search/active", {"minutes": minutes})
 
 
-def search_vehicle_trace(vehicle: str, minutes: int) -> dict:
-    """Get GPS trace for a specific vehicle."""
+def search_vehicle_trace(vehicle: str, minutes: int = 0) -> dict:
+    """Get GPS trace for a vehicle. minutes=0 means full history (historical data)."""
     payload = {"vehicle": vehicle, "time_window_minutes": minutes}
     return post_json("search/vehicle-trace", payload)
 
+
+# ─── Analytics ───────────────────────────────────────────────────────
+
+def get_density(precision: int = 5, minutes: int | None = None) -> dict:
+    """Get bus density per geohash cell (heatmap data)."""
+    params = {"precision": precision}
+    if minutes is not None:
+        params["minutes"] = minutes
+    return get_json("analytics/density", params)
+
+
+def get_speed_stats(minutes: int | None = None) -> dict:
+    """Get speed statistics (min/avg/max/histogram)."""
+    params = {}
+    if minutes is not None:
+        params["minutes"] = minutes
+    return get_json("analytics/speed", params)
+
+
+def get_active_count(minutes: int = 5) -> dict:
+    """Get number of distinct active vehicles in last N minutes."""
+    return get_json("analytics/active-count", {"minutes": minutes})
+
+
+def get_index_stats() -> dict:
+    """Get basic index-level statistics."""
+    return get_json("analytics/stats")

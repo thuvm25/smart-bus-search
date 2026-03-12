@@ -1,8 +1,11 @@
 from elasticsearch import Elasticsearch
+
 from .config import settings
 
 
-def get_es_client():
-    # Convert AnyHttpUrl to string for Elasticsearch client
-    es_host = str(settings.es_host)
-    return Elasticsearch(es_host)
+def get_es_client() -> Elasticsearch:
+    return Elasticsearch(str(settings.es_host))
+
+
+def get_index_name() -> str:
+    return settings.es_index

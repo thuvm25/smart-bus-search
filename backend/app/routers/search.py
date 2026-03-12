@@ -1,184 +1,177 @@
-from fastapi import APIRouter, Depends
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from elasticsearch import Elasticsearch
 
-from ..dependencies import get_es_client
-from ..schemas import NearbySearchResponse
-from ..services.search_service import search_nearby_stub
-from ..core.route_mapping import get_route_info
-from ..core.stop_lookup import get_nearest_stop_name
-
+from ..dependencies import get_es_client, get_index_name
 
 router = APIRouter()
 
 
-class NearbySearchRequest(BaseModel):
+class NearbyRequest(BaseModel):
     center: dict
     radius_m: int = 500
-    time_window_minutes: int = 5
+    time_window_minutes: int | None = None
     limit: int | None = None
 
 
-class ActiveSearchRequest(BaseModel):
-    time_window_minutes: int = 5
+class ActiveRequest(BaseModel):
+    minutes: int = 0  # 0 = no time filter (all data, for historical dataset)
 
 
 class VehicleTraceRequest(BaseModel):
     vehicle: str
-    time_window_minutes: int = 60
+    time_window_minutes: int = 0  # 0 = no time filter (all history, for static/past data)
 
 
-@router.get("/nearby", response_model=NearbySearchResponse)
-async def search_nearby(
-    lat: float,
-    lon: float,
-    radius_m: int = 500,
-    limit: int | None = None,
+# --------------- helpers ---------------
+
+def _nearby_query(index: str, lat: float, lon: float, radius_m: int,
+                  minutes: int | None, limit: int, es: Elasticsearch) -> dict:
+    filters: list[dict] = [
+        {"geo_distance": {"distance": f"{radius_m}m", "location": {"lat": lat, "lon": lon}}},
+    ]
+    if minutes is not None and minutes > 0:
+        filters.append({"range": {"datetime": {"gte": f"now-{minutes}m"}}})
+
+    body = {
+        "size": limit,
+        "query": {"bool": {"filter": filters}},
+        "sort": [
+            {"datetime": {"order": "desc", "unmapped_type": "date"}},
+            {"_geo_distance": {"location": {"lat": lat, "lon": lon}, "order": "asc", "unit": "m"}},
+        ],
+        "collapse": {"field": "vehicle"},
+        "aggs": {"unique_vehicles": {"cardinality": {"field": "vehicle"}}},
+    }
+
+    resp = es.search(index=index, **body)
+    hits = resp["hits"]["hits"]
+    unique = resp["aggregations"]["unique_vehicles"]["value"]
+
+    items = []
+    for h in hits:
+        src = h["_source"]
+        loc = src.get("location", {})
+        items.append({
+            "vehicle": src.get("vehicle"),
+            "datetime": src.get("datetime"),
+            "x": loc.get("lon"),
+            "y": loc.get("lat"),
+            "speed": src.get("speed"),
+            "ignition": src.get("ignition"),
+            "aircon": src.get("aircon"),
+            "heading": src.get("heading"),
+            "route_id": src.get("route_id"),
+            "route_no": src.get("route_no"),
+        })
+
+    return {
+        "items": items,
+        "lat": lat,
+        "lon": lon,
+        "radius_m": radius_m,
+        "total": unique,
+        "returned": len(items),
+        "limit": limit,
+    }
+
+
+# --------------- endpoints ---------------
+
+@router.get("/nearby")
+async def nearby_get(
+    lat: float = Query(...),
+    lon: float = Query(...),
+    radius_m: int = Query(500, ge=50, le=50_000),
+    minutes: int | None = Query(None, ge=0),
+    limit: int = Query(200, ge=1, le=5000),
     es: Elasticsearch = Depends(get_es_client),
-) -> NearbySearchResponse:
-    return search_nearby_stub(lat=lat, lon=lon, radius_m=radius_m, limit=limit, es=es)
+    index: str = Depends(get_index_name),
+) -> dict:
+    return _nearby_query(index, lat, lon, radius_m, minutes, limit, es)
 
 
-@router.post("/nearby", response_model=NearbySearchResponse)
-async def search_nearby_post(
-    req: NearbySearchRequest,
+@router.post("/nearby")
+async def nearby_post(
+    req: NearbyRequest,
     es: Elasticsearch = Depends(get_es_client),
-) -> NearbySearchResponse:
-    """Search for nearby buses with time window filter."""
+    index: str = Depends(get_index_name),
+) -> dict:
     lat = req.center.get("lat", 0)
     lon = req.center.get("lon", 0)
-    radius_m = req.radius_m
-
-    # Add time window filtering if needed
-    return search_nearby_stub(lat=lat, lon=lon, radius_m=radius_m, limit=req.limit, es=es)
+    limit = min(req.limit or 200, 5000)
+    return _nearby_query(index, lat, lon, req.radius_m, req.time_window_minutes, limit, es)
 
 
 @router.post("/active")
-async def search_active(
-    req: ActiveSearchRequest,
+async def active_buses(
+    req: ActiveRequest,
     es: Elasticsearch = Depends(get_es_client),
+    index: str = Depends(get_index_name),
 ) -> dict:
-    """Search for active buses in the last N minutes."""
-    if es is None:
-        return {"items": [], "total": 0}
+    """Latest position per vehicle. minutes=0 means no time filter (all data, for historical dataset)."""
+    filters: list[dict] = []
+    if req.minutes > 0:
+        filters.append({"range": {"datetime": {"gte": f"now-{req.minutes}m"}}})
 
-    try:
-        # Return one latest waypoint per vehicle.
-        query = {
-            "query": {
-                "match_all": {}
-            },
-            "size": 1000,
-            "sort": [
-                {
-                    "datetime": {
-                        "order": "desc",
-                        "unmapped_type": "date",
-                    }
-                }
-            ],
-            "collapse": {"field": "vehicle"},
-            "_source": ["vehicle", "datetime", "location", "speed", "ignition"]
-        }
+    query: dict = {"match_all": {}} if not filters else {"bool": {"filter": filters}}
 
-        response = es.search(index="bus_waypoints", **query)
+    body = {
+        "size": 1000,
+        "query": query,
+        "sort": [{"datetime": {"order": "desc", "unmapped_type": "date"}}],
+        "collapse": {"field": "vehicle"},
+    }
+    resp = es.search(index=index, **body)
 
-        items = []
-        for hit in response.get("hits", {}).get("hits", []):
-            source = hit["_source"]
-            vehicle_id = source.get("vehicle")
-            loc = source.get("location", {})
+    items = []
+    for h in resp["hits"]["hits"]:
+        src = h["_source"]
+        loc = src.get("location", {})
+        items.append({
+            "vehicle": src.get("vehicle"),
+            "datetime": src.get("datetime"),
+            "lat": loc.get("lat"),
+            "lon": loc.get("lon"),
+            "speed": src.get("speed"),
+            "ignition": src.get("ignition"),
+            "route_id": src.get("route_id"),
+            "route_no": src.get("route_no"),
+        })
 
-            # Enrich with route info
-            route_info = get_route_info(vehicle_id)
-
-            vehicle_data = {
-                "vehicle": vehicle_id,
-                "datetime": source.get("datetime"),
-                "lat": loc.get("lat"),
-                "lon": loc.get("lon"),
-                "speed": source.get("speed"),
-                "ignition": source.get("ignition"),
-            }
-
-            if route_info:
-                mapping_route_id = route_info.get("route_id")
-                mapping_route_no = route_info.get("route_no")
-                route_name = route_info.get("route_name")
-                vehicle_data["mapping_route_id"] = mapping_route_id
-                vehicle_data["mapping_route_no"] = mapping_route_no
-                if route_name:
-                    vehicle_data["route_name"] = route_name
-                elif mapping_route_no:
-                    vehicle_data["route_name"] = f"Tuyen {mapping_route_no}"
-
-            stop_name = get_nearest_stop_name(vehicle_data["lat"], vehicle_data["lon"])
-            if stop_name:
-                vehicle_data["stop_name"] = stop_name
-
-            items.append(vehicle_data)
-
-        return {"items": items, "total": len(items)}
-    except Exception as e:
-        print(f"Search active error: {e}")
-        return {"items": [], "total": 0}
+    return {"items": items, "total": len(items)}
 
 
 @router.post("/vehicle-trace")
-async def search_vehicle_trace(
+async def vehicle_trace(
     req: VehicleTraceRequest,
     es: Elasticsearch = Depends(get_es_client),
+    index: str = Depends(get_index_name),
 ) -> dict:
-    """Get GPS trace for a specific vehicle in the last N minutes."""
-    if es is None:
-        return {"items": [], "total": 0, "vehicle": req.vehicle}
+    """GPS trace for one vehicle. time_window_minutes=0 means full history (for historical data)."""
+    filters: list[dict] = [{"term": {"vehicle": req.vehicle}}]
+    if req.time_window_minutes > 0:
+        filters.append({"range": {"datetime": {"gte": f"now-{req.time_window_minutes}m"}}})
 
-    try:
-        # Query specific vehicle's waypoints
-        query = {
-            "query": {
-                "term": {"vehicle": req.vehicle}
-            },
-            "size": 1000,
-            "sort": [{"datetime": "asc"}],
-            "_source": ["vehicle", "datetime", "location", "speed", "ignition"]
-        }
+    body = {
+        "size": 10_000,
+        "query": {"bool": {"filter": filters}},
+        "sort": [{"datetime": "asc"}],
+    }
+    resp = es.search(index=index, **body)
 
-        response = es.search(index="bus_waypoints", **query)
+    items = []
+    for h in resp["hits"]["hits"]:
+        src = h["_source"]
+        loc = src.get("location", {})
+        items.append({
+            "datetime": src.get("datetime"),
+            "lat": loc.get("lat"),
+            "lon": loc.get("lon"),
+            "speed": src.get("speed"),
+            "ignition": src.get("ignition"),
+        })
 
-        # Enrich with route info
-        route_info = get_route_info(req.vehicle)
-
-        items = []
-        for hit in response.get("hits", {}).get("hits", []):
-            source = hit["_source"]
-            loc = source.get("location", {})
-            item = {
-                "datetime": source.get("datetime"),
-                "lat": loc.get("lat"),
-                "lon": loc.get("lon"),
-                "speed": source.get("speed"),
-                "ignition": source.get("ignition"),
-            }
-            stop_name = get_nearest_stop_name(item["lat"], item["lon"])
-            if stop_name:
-                item["stop_name"] = stop_name
-            items.append(item)
-
-        result = {"items": items, "total": len(items), "vehicle": req.vehicle}
-        if route_info:
-            mapping_route_id = route_info.get("route_id")
-            mapping_route_no = route_info.get("route_no")
-            route_name = route_info.get("route_name")
-            result["mapping_route_id"] = mapping_route_id
-            result["mapping_route_no"] = mapping_route_no
-            if route_name:
-                result["route_name"] = route_name
-            elif mapping_route_no:
-                result["route_name"] = f"Tuyen {mapping_route_no}"
-
-        return result
-    except Exception as e:
-        print(f"Vehicle trace error: {e}")
-        return {"items": [], "total": 0, "vehicle": req.vehicle}
-
+    return {"items": items, "total": len(items), "vehicle": req.vehicle}
