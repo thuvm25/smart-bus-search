@@ -25,7 +25,17 @@ BUS_WAYPOINT_MAPPING = {
                 "type": "text",
                 "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
             },
+            # "Folded" fields store the same content but without diacritics (Vietnamese accents)
+            # to support queries like "an suong" matching "An Sương".
+            "route_name_folded": {
+                "type": "text",
+                "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
+            },
             "stop_name": {
+                "type": "text",
+                "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
+            },
+            "stop_name_folded": {
                 "type": "text",
                 "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
             },

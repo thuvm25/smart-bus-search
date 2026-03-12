@@ -12,6 +12,7 @@ from api_client import (
     search_active,
     search_nearby,
     search_vehicle_trace,
+    search_text,
     get_density,
     get_speed_stats,
     get_active_count,
@@ -351,12 +352,12 @@ def page_search():
             st.caption(f"Không lấy được realtime metrics: {e}")
 
     st.sidebar.header("Search Options")
-    mode = st.sidebar.selectbox("Loại tìm kiếm", ["Active buses", "Nearby buses", "Vehicle trace"])
+    mode = st.sidebar.selectbox("Loại tìm kiếm", ["Active buses", "Nearby buses", "Vehicle trace", "Text (fuzzy)"])
 
     auto_refresh_sec = st.sidebar.slider("Auto refresh (giây, 0 = tắt)", 0, 10, 3)
     # Auto refresh only for modes that make sense to update continuously.
     # Vehicle trace should not refresh automatically (would clear results / require re-run).
-    if auto_refresh_sec > 0 and mode in ["Active buses", "Nearby buses"]:
+    if auto_refresh_sec > 0 and mode in ["Active buses", "Nearby buses", "Text (fuzzy)"]:
         st_autorefresh(interval=auto_refresh_sec * 1000, key="auto_refresh_counter")
 
     payload: dict | None = None
@@ -384,6 +385,15 @@ def page_search():
         if st.sidebar.button("Tìm kiếm"):
             with st.spinner("Đang lấy quỹ đạo xe..."):
                 payload = search_vehicle_trace(vehicle_id, minutes)
+
+    elif mode == "Text (fuzzy)":
+        q = st.sidebar.text_input("Tìm route/stop (fuzzy)", "")
+        minutes = st.sidebar.slider("Time filter (phút, 0 = tắt)", 0, 120, 0, key="text_minutes")
+        limit = st.sidebar.slider("Số bản ghi tối đa", 50, 2000, 300, step=50, key="text_limit")
+        manual_click = st.sidebar.button("Tìm kiếm")
+        if (auto_refresh_sec > 0 or manual_click) and q.strip():
+            with st.spinner("Đang tìm kiếm text (fuzzy)..."):
+                payload = search_text(q.strip(), minutes=None if minutes == 0 else minutes, limit=limit)
 
     if payload:
         df = _normalize_items(mode, payload)

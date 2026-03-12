@@ -241,6 +241,11 @@ UI gồm 3 trang chính:
   - Sort theo `datetime asc`
 - **Khi dùng**: Debug hành trình/đường đi, quan sát thay đổi tốc độ theo từng đoạn.
 
+#### (Tuỳ chọn) Text search (fuzzy) theo route/stop
+- **Mục tiêu**: Tìm theo tên tuyến/điểm dừng khi người dùng gõ **sai chính tả/thiếu dấu**.
+- **Cách hoạt động**: Elasticsearch `multi_match` với `fuzziness: AUTO` trên `route_name` và `stop_name`, kèm exact match cho `route_no/vehicle`.
+- **Lưu ý**: Tính năng này hiệu quả nhất khi dữ liệu đã có `stop_name/route_name` (ví dụ chạy bước enrich nearest stop).
+
 ### Analytics (đang phân tích cái gì?)
 - **Index stats**: Đọc `indices.stats` của Elasticsearch để biết số doc, dung lượng, tổng search/indexing.
 - **Active vehicles**: Aggregation `cardinality(vehicle)` trong cửa sổ `now-N minutes` để biết **bao nhiêu xe distinct đang hoạt động**.

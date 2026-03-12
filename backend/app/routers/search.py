@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import unicodedata
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from elasticsearch import Elasticsearch
 
 from ..dependencies import get_es_client, get_index_name
+from ..core.route_mapping import get_route_info
 
 router = APIRouter()
 
@@ -25,7 +27,19 @@ class VehicleTraceRequest(BaseModel):
     time_window_minutes: int = 0  # 0 = no time filter (all history, for static/past data)
 
 
+class TextSearchRequest(BaseModel):
+    q: str
+    minutes: int | None = None
+    limit: int = 200
+
+
 # --------------- helpers ---------------
+
+def _fold_text(s: str) -> str:
+    s = s.strip().lower()
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
+    return " ".join(s.split())
 
 def _nearby_query(index: str, lat: float, lon: float, radius_m: int,
                   minutes: int | None, limit: int, es: Elasticsearch) -> dict:
@@ -54,8 +68,20 @@ def _nearby_query(index: str, lat: float, lon: float, radius_m: int,
     for h in hits:
         src = h["_source"]
         loc = src.get("location", {})
+        vehicle_id = src.get("vehicle")
+        # On-the-fly enrich for UI: route metadata (cheap, dict lookup) if missing.
+        route_id = src.get("route_id")
+        route_no = src.get("route_no")
+        route_name = src.get("route_name")
+        if vehicle_id and (route_id is None or route_no is None or route_name is None):
+            info = get_route_info(str(vehicle_id))
+            if info:
+                route_id = route_id or (str(info.get("route_id")) if info.get("route_id") is not None else None)
+                route_no = route_no or info.get("route_no")
+                route_name = route_name or info.get("route_name")
+
         items.append({
-            "vehicle": src.get("vehicle"),
+            "vehicle": vehicle_id,
             "datetime": src.get("datetime"),
             "x": loc.get("lon"),
             "y": loc.get("lat"),
@@ -63,8 +89,10 @@ def _nearby_query(index: str, lat: float, lon: float, radius_m: int,
             "ignition": src.get("ignition"),
             "aircon": src.get("aircon"),
             "heading": src.get("heading"),
-            "route_id": src.get("route_id"),
-            "route_no": src.get("route_no"),
+            "route_id": route_id,
+            "route_no": route_no,
+            "route_name": route_name,
+            "stop_name": src.get("stop_name"),
         })
 
     return {
@@ -130,15 +158,28 @@ async def active_buses(
     for h in resp["hits"]["hits"]:
         src = h["_source"]
         loc = src.get("location", {})
+        vehicle_id = src.get("vehicle")
+        route_id = src.get("route_id")
+        route_no = src.get("route_no")
+        route_name = src.get("route_name")
+        if vehicle_id and (route_id is None or route_no is None or route_name is None):
+            info = get_route_info(str(vehicle_id))
+            if info:
+                route_id = route_id or (str(info.get("route_id")) if info.get("route_id") is not None else None)
+                route_no = route_no or info.get("route_no")
+                route_name = route_name or info.get("route_name")
+
         items.append({
-            "vehicle": src.get("vehicle"),
+            "vehicle": vehicle_id,
             "datetime": src.get("datetime"),
             "lat": loc.get("lat"),
             "lon": loc.get("lon"),
             "speed": src.get("speed"),
             "ignition": src.get("ignition"),
-            "route_id": src.get("route_id"),
-            "route_no": src.get("route_no"),
+            "route_id": route_id,
+            "route_no": route_no,
+            "route_name": route_name,
+            "stop_name": src.get("stop_name"),
         })
 
     return {"items": items, "total": len(items)}
@@ -175,3 +216,94 @@ async def vehicle_trace(
         })
 
     return {"items": items, "total": len(items), "vehicle": req.vehicle}
+
+
+@router.get("/text")
+async def text_search_get(
+    q: str = Query(..., min_length=1, description="Free text query (route/stop/vehicle/route_no)"),
+    minutes: int | None = Query(None, ge=0),
+    limit: int = Query(200, ge=1, le=2000),
+    es: Elasticsearch = Depends(get_es_client),
+    index: str = Depends(get_index_name),
+) -> dict:
+    filters: list[dict] = []
+    if minutes is not None and minutes > 0:
+        filters.append({"range": {"datetime": {"gte": f"now-{minutes}m"}}})
+
+    folded_q = _fold_text(q)
+    # Search both original (accented) and folded (no-accent) fields.
+    text_query = {
+        "bool": {
+            "should": [
+                {
+                    "multi_match": {
+                        "query": q,
+                        "fields": ["route_name^3", "stop_name^3"],
+                        "type": "best_fields",
+                        "operator": "and",
+                        "fuzziness": "AUTO",
+                    }
+                },
+                {
+                    "multi_match": {
+                        "query": folded_q,
+                        "fields": ["route_name_folded^2", "stop_name_folded^2"],
+                        "type": "best_fields",
+                        "operator": "and",
+                        "fuzziness": "AUTO",
+                    }
+                },
+            ],
+            "minimum_should_match": 1,
+        }
+    }
+    should_exact = [
+        {"term": {"vehicle": q}},
+        {"term": {"route_no": q}},
+        {"term": {"route_id": q}},
+    ]
+
+    body = {
+        "size": limit,
+        "query": {
+            "bool": {
+                "filter": filters,
+                "must": [text_query],
+                "should": should_exact,
+            }
+        },
+        "sort": [{"datetime": {"order": "desc", "unmapped_type": "date"}}],
+        "highlight": {"fields": {"route_name": {}, "stop_name": {}}},
+    }
+
+    resp = es.search(index=index, **body)
+    hits = resp["hits"]["hits"]
+
+    items = []
+    for h in hits:
+        src = h["_source"]
+        loc = src.get("location", {})
+        items.append(
+            {
+                "vehicle": src.get("vehicle"),
+                "datetime": src.get("datetime"),
+                "lat": loc.get("lat"),
+                "lon": loc.get("lon"),
+                "speed": src.get("speed"),
+                "ignition": src.get("ignition"),
+                "route_id": src.get("route_id"),
+                "route_no": src.get("route_no"),
+                "route_name": src.get("route_name"),
+                "stop_name": src.get("stop_name"),
+                "highlight": h.get("highlight", {}),
+            }
+        )
+
+    return {
+        "q": q,
+        "items": items,
+        "total": int(resp["hits"]["total"]["value"]),
+        "returned": len(items),
+        "limit": limit,
+        "minutes": minutes,
+    }

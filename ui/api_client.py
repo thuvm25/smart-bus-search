@@ -54,6 +54,14 @@ def search_vehicle_trace(vehicle: str, minutes: int = 0) -> dict:
     return post_json("search/vehicle-trace", payload)
 
 
+def search_text(q: str, minutes: int | None = None, limit: int = 200) -> dict:
+    """Fuzzy text search across route_name/stop_name (and exact route_no/vehicle)."""
+    params = {"q": q, "limit": limit}
+    if minutes is not None:
+        params["minutes"] = minutes
+    return get_json("search/text", params)
+
+
 # ─── Analytics ───────────────────────────────────────────────────────
 
 def get_density(precision: int = 5, minutes: int | None = None) -> dict:
