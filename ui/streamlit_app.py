@@ -32,6 +32,11 @@ HCM_CENTER = (10.7769, 106.7009)
 def _speed_band(speed: float | None) -> str:
     if speed is None:
         return "Unknown"
+    try:
+        if isinstance(speed, float) and math.isnan(speed):
+            return "Unknown"
+    except Exception:
+        return "Unknown"
     if speed > 50:
         return ">50 km/h"
     if speed >= 40:
@@ -45,6 +50,11 @@ def _speed_band(speed: float | None) -> str:
 
 def _speed_color(speed: float | None) -> list[int]:
     if speed is None:
+        return [130, 130, 130]
+    try:
+        if isinstance(speed, float) and math.isnan(speed):
+            return [130, 130, 130]
+    except Exception:
         return [130, 130, 130]
     if speed > 50:
         return [220, 40, 40]  # red
@@ -144,16 +154,8 @@ def _render_result_panel(mode_name: str, payload: dict, df: pd.DataFrame) -> Non
                     st.write(f"- {name}")
 
     with col_b:
-        if mode_name == "Vehicle trace":
-            st.markdown("**Speed legend**")
-            st.write("- 🔴 Red: >50 km/h")
-            st.write("- 🟡 Yellow: 40-50 km/h")
-            st.write("- 🔵 Blue: 30-40 km/h")
-            st.write("- ⚫ Gray: 20-30 km/h")
-            st.write("- ⚪ Black: <20 km/h")
-        else:
-            st.markdown("**Gợi ý**")
-            st.caption("Bật Auto refresh để theo dõi dữ liệu ingest realtime (khi simulator đang chạy).")
+        st.markdown("**Gợi ý**")
+        st.caption("Bật Auto refresh để theo dõi dữ liệu ingest realtime (khi simulator đang chạy).")
 
 
 def _render_points_map(
@@ -245,6 +247,16 @@ def _render_trace_map(df: pd.DataFrame) -> None:
         _render_points_map(df)
         return
 
+    def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        r = 6_371_000.0
+        phi1 = math.radians(lat1)
+        phi2 = math.radians(lat2)
+        dphi = math.radians(lat2 - lat1)
+        dlambda = math.radians(lon2 - lon1)
+        a = math.sin(dphi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2.0) ** 2
+        c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+        return r * c
+
     segments: list[dict] = []
     ordered = df.copy()
     if "datetime" in ordered.columns:
@@ -252,11 +264,32 @@ def _render_trace_map(df: pd.DataFrame) -> None:
         ordered = ordered.sort_values("datetime")
     ordered = ordered.reset_index(drop=True)
 
+    # Downsample very long traces to keep map readable.
+    max_points = 2500
+    if len(ordered) > max_points:
+        step = max(1, len(ordered) // max_points)
+        ordered = ordered.iloc[::step].reset_index(drop=True)
+
+    # Break segments on outliers (GPS jump) / long gaps to avoid "fan" artifacts.
+    max_jump_m = 1500.0
+    max_gap_s = 8 * 60.0
+
     for i in range(len(ordered) - 1):
         a = ordered.iloc[i]
         b = ordered.iloc[i + 1]
         if pd.isna(a["lat"]) or pd.isna(a["lon"]) or pd.isna(b["lat"]) or pd.isna(b["lon"]):
             continue
+
+        # Time gap (if datetime available)
+        if "datetime" in ordered.columns and pd.notna(a.get("datetime")) and pd.notna(b.get("datetime")):
+            dt_s = (b["datetime"] - a["datetime"]).total_seconds()
+            if dt_s < 0 or dt_s > max_gap_s:
+                continue
+
+        dist_m = _haversine_m(float(a["lat"]), float(a["lon"]), float(b["lat"]), float(b["lon"]))
+        if dist_m > max_jump_m:
+            continue
+
         speed_val = a.get("speed")
         segments.append(
             {
@@ -272,7 +305,7 @@ def _render_trace_map(df: pd.DataFrame) -> None:
         data=ordered,
         get_position="[lon, lat]",
         get_fill_color="color",
-        get_radius=40,
+        get_radius=18,
         pickable=True,
     )
     path_layer = pdk.Layer(
@@ -311,10 +344,9 @@ def page_search():
         st.markdown("**Realtime ingest (last 60s)**")
         try:
             rt = get_realtime(60)
-            c1, c2, c3 = st.columns(3)
+            c1, c2 = st.columns(2)
             c1.metric("Records", f"{rt.get('records', 0):,}")
             c2.metric("Unique vehicles", f"{rt.get('unique_vehicles', 0):,}")
-            c3.metric("Latest datetime", rt.get("latest_datetime") or "N/A")
         except Exception as e:
             st.caption(f"Không lấy được realtime metrics: {e}")
 
@@ -322,8 +354,9 @@ def page_search():
     mode = st.sidebar.selectbox("Loại tìm kiếm", ["Active buses", "Nearby buses", "Vehicle trace"])
 
     auto_refresh_sec = st.sidebar.slider("Auto refresh (giây, 0 = tắt)", 0, 10, 3)
-    # Refresh the whole page (including realtime panel) for Search page.
-    if auto_refresh_sec > 0:
+    # Auto refresh only for modes that make sense to update continuously.
+    # Vehicle trace should not refresh automatically (would clear results / require re-run).
+    if auto_refresh_sec > 0 and mode in ["Active buses", "Nearby buses"]:
         st_autorefresh(interval=auto_refresh_sec * 1000, key="auto_refresh_counter")
 
     payload: dict | None = None
