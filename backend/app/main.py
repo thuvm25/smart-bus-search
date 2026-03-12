@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from .config import settings
 from .dependencies import get_es_client
@@ -29,6 +30,11 @@ app.add_middleware(
 )
 
 
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/docs")
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}
@@ -37,3 +43,4 @@ async def health():
 app.include_router(search.router, prefix="/api/search", tags=["search"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(ingest.router, prefix="/api/ingest", tags=["ingest"])
+app.include_router(benchmark.router, prefix="/api/benchmark", tags=["benchmark"])

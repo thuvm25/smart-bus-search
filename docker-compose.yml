@@ -42,8 +42,10 @@ services:
       CSV_PATH: /app/data/processed/bus_gps_clean.csv
       BATCH_SIZE: "200"
       SEND_INTERVAL: "2"
+      LOOP: "true"
     volumes:
       - ./data:/app/data:ro
+    restart: unless-stopped
     profiles:
       - simulate
 

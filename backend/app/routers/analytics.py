@@ -8,6 +8,7 @@ from ..services.analytics_service import (
     active_vehicles_count,
     geo_grid_density,
     index_stats,
+    realtime_ingest_metrics,
     speed_statistics,
 )
 
@@ -52,3 +53,13 @@ async def stats(
 ) -> dict:
     """Basic index-level statistics."""
     return index_stats(es, index)
+
+
+@router.get("/realtime")
+async def realtime(
+    window_seconds: int = Query(60, ge=1, le=3600),
+    es: Elasticsearch = Depends(get_es_client),
+    index: str = Depends(get_index_name),
+) -> dict:
+    """Realtime ingest metrics (records/vehicles/latest) for last N seconds."""
+    return realtime_ingest_metrics(es, index, window_seconds=window_seconds)

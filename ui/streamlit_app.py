@@ -4,10 +4,6 @@ from streamlit_autorefresh import st_autorefresh
 st.set_page_config(page_title="HCMC Bus GPS Search", layout="wide", page_icon="🚌")
 
 import math
-import time
-import random
-import statistics
-from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import pydeck as pdk
@@ -20,6 +16,8 @@ from api_client import (
     get_speed_stats,
     get_active_count,
     get_index_stats,
+    get_realtime,
+    run_benchmark,
 )
 
 # ─── Constants ───────────────────────────────────────────────────────
@@ -146,12 +144,16 @@ def _render_result_panel(mode_name: str, payload: dict, df: pd.DataFrame) -> Non
                     st.write(f"- {name}")
 
     with col_b:
-        st.markdown("**Speed legend**")
-        st.write("- 🔴 Red: >50 km/h")
-        st.write("- 🟡 Yellow: 40-50 km/h")
-        st.write("- 🔵 Blue: 30-40 km/h")
-        st.write("- ⚫ Gray: 20-30 km/h")
-        st.write("- ⚪ Black: <20 km/h")
+        if mode_name == "Vehicle trace":
+            st.markdown("**Speed legend**")
+            st.write("- 🔴 Red: >50 km/h")
+            st.write("- 🟡 Yellow: 40-50 km/h")
+            st.write("- 🔵 Blue: 30-40 km/h")
+            st.write("- ⚫ Gray: 20-30 km/h")
+            st.write("- ⚪ Black: <20 km/h")
+        else:
+            st.markdown("**Gợi ý**")
+            st.caption("Bật Auto refresh để theo dõi dữ liệu ingest realtime (khi simulator đang chạy).")
 
 
 def _render_points_map(
@@ -159,9 +161,17 @@ def _render_points_map(
     center_lat: float | None = None,
     center_lon: float | None = None,
     radius_m: int | None = None,
+    fixed_view: bool = True,
 ) -> None:
-    map_center_lat = float(center_lat) if center_lat is not None else float(df["lat"].mean())
-    map_center_lon = float(center_lon) if center_lon is not None else float(df["lon"].mean())
+    # Avoid "jitter" on auto-refresh by keeping view state stable.
+    # If fixed_view=True, center comes from user inputs (or HCM_CENTER), not from data mean.
+    if fixed_view:
+        map_center_lat = float(center_lat) if center_lat is not None else float(HCM_CENTER[0])
+        map_center_lon = float(center_lon) if center_lon is not None else float(HCM_CENTER[1])
+    else:
+        map_center_lat = float(center_lat) if center_lat is not None else float(df["lat"].mean())
+        map_center_lon = float(center_lon) if center_lon is not None else float(df["lon"].mean())
+
     zoom = _zoom_for_radius(int(radius_m), map_center_lat) if radius_m is not None else 11
 
     view_state = pdk.ViewState(
@@ -193,17 +203,6 @@ def _render_points_map(
         pickable=True,
     )
     layers.append(bus_icon_layer)
-
-    bus_shadow_layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=df,
-        get_position="[lon, lat]",
-        get_fill_color=[50, 90, 160, 90],
-        get_radius=16,
-        pickable=False,
-        opacity=0.5,
-    )
-    layers.append(bus_shadow_layer)
 
     if center_lat is not None and center_lon is not None:
         center_layer = pdk.Layer(
@@ -307,11 +306,24 @@ def page_search():
     st.title("🚌 HCMC Bus Visual Search")
     st.caption("Tìm kiếm xe buýt theo vị trí, xem quỹ đạo, và theo dõi hoạt động real-time")
 
+    # Realtime ingest status
+    with st.container(border=True):
+        st.markdown("**Realtime ingest (last 60s)**")
+        try:
+            rt = get_realtime(60)
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Records", f"{rt.get('records', 0):,}")
+            c2.metric("Unique vehicles", f"{rt.get('unique_vehicles', 0):,}")
+            c3.metric("Latest datetime", rt.get("latest_datetime") or "N/A")
+        except Exception as e:
+            st.caption(f"Không lấy được realtime metrics: {e}")
+
     st.sidebar.header("Search Options")
     mode = st.sidebar.selectbox("Loại tìm kiếm", ["Active buses", "Nearby buses", "Vehicle trace"])
 
     auto_refresh_sec = st.sidebar.slider("Auto refresh (giây, 0 = tắt)", 0, 10, 3)
-    if auto_refresh_sec > 0 and mode in ["Active buses", "Nearby buses"]:
+    # Refresh the whole page (including realtime panel) for Search page.
+    if auto_refresh_sec > 0:
         st_autorefresh(interval=auto_refresh_sec * 1000, key="auto_refresh_counter")
 
     payload: dict | None = None
@@ -368,9 +380,16 @@ def page_search():
                         center_lat=float(payload.get("lat", lat if "lat" in locals() else df["lat"].mean())),
                         center_lon=float(payload.get("lon", lon if "lon" in locals() else df["lon"].mean())),
                         radius_m=int(payload.get("radius_m", radius_m if "radius_m" in locals() else 500)),
+                        fixed_view=True,
                     )
                 else:
-                    _render_points_map(df)
+                    _render_points_map(
+                        df,
+                        center_lat=HCM_CENTER[0],
+                        center_lon=HCM_CENTER[1],
+                        radius_m=None,
+                        fixed_view=True,
+                    )
             else:
                 st.warning("Response không có cột lat/lon để vẽ bản đồ.")
 
@@ -401,6 +420,20 @@ def page_analytics():
     st.title("📈 Analytics Dashboard")
     st.caption("Thống kê và phân tích dữ liệu GPS xe buýt từ Elasticsearch")
 
+    # Optional auto-refresh for dashboards
+    a_col1, a_col2 = st.columns([1.2, 3.8])
+    with a_col1:
+        analytics_refresh = st.selectbox(
+            "Auto refresh (Analytics)",
+            [0, 5, 10, 15, 30],
+            format_func=lambda x: "Tắt" if x == 0 else f"{x}s",
+            key="analytics_refresh_sec",
+        )
+    with a_col2:
+        st.caption("Bật để dashboard tự cập nhật (đặc biệt hữu ích khi simulator đang chạy).")
+    if int(analytics_refresh) > 0:
+        st_autorefresh(interval=int(analytics_refresh) * 1000, key="analytics_autorefresh_counter")
+
     # ── Index Stats ──
     st.subheader("📦 Thông tin Index")
     try:
@@ -416,6 +449,25 @@ def page_analytics():
             st.warning("Index chưa có dữ liệu hoặc chưa được tạo.")
     except Exception as e:
         st.error(f"Lỗi khi gọi API stats: {e}")
+
+    st.divider()
+
+    # ── Active Vehicle Count ──
+    st.subheader("🚍 Xe buýt đang hoạt động")
+    active_minutes = st.selectbox(
+        "Khoảng thời gian",
+        [5, 15, 30, 60],
+        format_func=lambda x: f"{x} phút gần nhất",
+        key="active_minutes",
+    )
+    try:
+        active_data = get_active_count(active_minutes)
+        ac1, ac2, ac3 = st.columns(3)
+        ac1.metric("Số xe hoạt động", f"{active_data.get('active_vehicles', 0):,}")
+        ac2.metric("Tổng bản ghi", f"{active_data.get('total_records', 0):,}")
+        ac3.metric("Cửa sổ thời gian", f"{active_data.get('time_window_minutes', active_minutes)} phút")
+    except Exception as e:
+        st.error(f"Lỗi khi gọi API active-count: {e}")
 
     st.divider()
 
@@ -461,6 +513,25 @@ def page_analytics():
             st.write(f"Tổng số ô: **{density.get('total_cells', len(cells))}**")
             cell_df = pd.DataFrame(cells)
 
+            # Color ramp for density (low -> high)
+            counts = cell_df["doc_count"].fillna(0).astype(float)
+            q1, q2, q3 = counts.quantile([0.25, 0.5, 0.75]).tolist()
+            vmin, vmax = float(counts.min()), float(counts.max())
+
+            def _density_color(v: float) -> list[int]:
+                # 4 bins: very low, low, medium, high
+                if v <= q1:
+                    return [33, 102, 172, 120]   # blue
+                if v <= q2:
+                    return [103, 169, 207, 140]  # light blue
+                if v <= q3:
+                    return [253, 174, 97, 160]   # orange
+                return [215, 48, 39, 190]        # red
+
+            cell_df["color"] = counts.apply(_density_color)
+            # Log-ish radius so high density pops but doesn't explode
+            cell_df["radius"] = (counts.clip(lower=1) ** 0.6) * 120
+
             # Heatmap layer
             heatmap_layer = pdk.Layer(
                 "HeatmapLayer",
@@ -477,9 +548,8 @@ def page_analytics():
                 "ScatterplotLayer",
                 data=cell_df,
                 get_position="[lon, lat]",
-                get_fill_color=[65, 105, 225, 160],
-                get_radius="doc_count",
-                radius_scale=2,
+                get_fill_color="color",
+                get_radius="radius",
                 radius_min_pixels=5,
                 radius_max_pixels=50,
                 pickable=True,
@@ -499,6 +569,27 @@ def page_analytics():
             )
             st.pydeck_chart(deck, use_container_width=True)
 
+            # Density legend (doc_count bins)
+            st.markdown("**Legend (doc_count per cell)**")
+            legend_cols = st.columns(4)
+            bins = [
+                (f"≤ {int(q1)}", [33, 102, 172]),
+                (f"{int(q1)+1}–{int(q2)}", [103, 169, 207]),
+                (f"{int(q2)+1}–{int(q3)}", [253, 174, 97]),
+                (f"> {int(q3)}", [215, 48, 39]),
+            ]
+            for col, (label, rgb) in zip(legend_cols, bins):
+                with col:
+                    st.markdown(
+                        f"<div style='display:flex;align-items:center;gap:10px'>"
+                        f"<div style='width:18px;height:18px;border-radius:4px;background:rgb({rgb[0]},{rgb[1]},{rgb[2]});"
+                        f"border:1px solid rgba(0,0,0,.15)'></div>"
+                        f"<div style='font-size:14px'>{label}</div>"
+                        f"</div>",
+                        unsafe_allow_html=True,
+                    )
+            st.caption(f"Min={int(vmin)} · Max={int(vmax)} (bin theo quartiles)")
+
             # Table of density data
             with st.expander("Xem dữ liệu mật độ chi tiết"):
                 st.dataframe(cell_df[["geohash", "doc_count", "unique_vehicles", "lat", "lon"]], use_container_width=True)
@@ -508,220 +599,57 @@ def page_analytics():
         st.error(f"Lỗi khi gọi API density: {e}")
 
 
-# ─── Page: Benchmark ─────────────────────────────────────────────────
-
-# Benchmark helper functions (self-contained, connect directly to ES via backend)
-import os
-from elasticsearch import Elasticsearch
-
-HCM_LAT = (10.70, 10.90)
-HCM_LON = (106.60, 106.80)
-BENCH_VEHICLES = [f"vehicle_{i:04d}" for i in range(200)]
-
-
-def _get_es_client() -> Elasticsearch:
-    """Get Elasticsearch client."""
-    es_host = os.getenv("ES_HOST", "http://localhost:9200")
-    # Also try BACKEND_URL-derived host (in Docker, ES may be accessible differently)
-    try:
-        es = Elasticsearch(es_host)
-        es.info()
-        return es
-    except Exception:
-        # Fallback to localhost
-        es = Elasticsearch("http://localhost:9200")
-        return es
-
-
-def _random_doc() -> dict:
-    return {
-        "vehicle": random.choice(BENCH_VEHICLES),
-        "datetime": (
-            datetime.now(tz=timezone.utc) - timedelta(seconds=random.randint(0, 3600))
-        ).isoformat(),
-        "location": {
-            "lat": random.uniform(*HCM_LAT),
-            "lon": random.uniform(*HCM_LON),
-        },
-        "speed": round(random.uniform(0, 60), 1),
-        "ignition": random.choice([True, False]),
-    }
-
-
-BENCH_MAPPING = {
-    "settings": {"number_of_shards": 1, "number_of_replicas": 0},
-    "mappings": {
-        "properties": {
-            "vehicle": {"type": "keyword"},
-            "datetime": {"type": "date"},
-            "location": {"type": "geo_point"},
-            "speed": {"type": "float"},
-            "ignition": {"type": "boolean"},
-        }
-    },
-}
-
-
-def _bench_indexing(es: Elasticsearch, index: str, n: int) -> dict:
-    from elasticsearch import helpers
-    docs = [{"_index": index, "_source": _random_doc()} for _ in range(n)]
-    t0 = time.perf_counter()
-    success, errors = helpers.bulk(es, docs, chunk_size=500, raise_on_error=False)
-    elapsed = time.perf_counter() - t0
-    es.indices.refresh(index=index)
-    return {
-        "documents": n,
-        "success": success,
-        "errors": len(errors) if isinstance(errors, list) else 0,
-        "elapsed_sec": round(elapsed, 3),
-        "docs_per_sec": round(n / elapsed, 1),
-    }
-
-
-def _bench_search_latency(es: Elasticsearch, index: str, runs: int = 50) -> dict:
-    latencies: list[float] = []
-    for _ in range(runs):
-        lat = random.uniform(*HCM_LAT)
-        lon = random.uniform(*HCM_LON)
-        radius = random.choice([500, 1000, 2000])
-        body = {
-            "size": 20,
-            "query": {
-                "bool": {
-                    "filter": [
-                        {"geo_distance": {"distance": f"{radius}m", "location": {"lat": lat, "lon": lon}}},
-                    ]
-                }
-            },
-        }
-        t0 = time.perf_counter()
-        es.search(index=index, **body)
-        latencies.append((time.perf_counter() - t0) * 1000)
-
-    return {
-        "runs": runs,
-        "min_ms": round(min(latencies), 2),
-        "avg_ms": round(statistics.mean(latencies), 2),
-        "median_ms": round(statistics.median(latencies), 2),
-        "p95_ms": round(sorted(latencies)[int(runs * 0.95)], 2),
-        "max_ms": round(max(latencies), 2),
-    }
-
-
-def _bench_aggregation_latency(es: Elasticsearch, index: str, runs: int = 30) -> dict:
-    latencies: list[float] = []
-    for _ in range(runs):
-        body = {
-            "size": 0,
-            "aggs": {
-                "grid": {
-                    "geohash_grid": {"field": "location", "precision": 5},
-                    "aggs": {"vehicles": {"cardinality": {"field": "vehicle"}}},
-                }
-            },
-        }
-        t0 = time.perf_counter()
-        es.search(index=index, **body)
-        latencies.append((time.perf_counter() - t0) * 1000)
-
-    return {
-        "runs": runs,
-        "min_ms": round(min(latencies), 2),
-        "avg_ms": round(statistics.mean(latencies), 2),
-        "median_ms": round(statistics.median(latencies), 2),
-        "p95_ms": round(sorted(latencies)[int(runs * 0.95)], 2),
-        "max_ms": round(max(latencies), 2),
-    }
-
-
-def _bench_scalability(es: Elasticsearch, index: str, progress_bar) -> list[dict]:
-    sizes = [1_000, 5_000, 10_000, 25_000]
-    results = []
-    total_indexed = 0
-    for step, n in enumerate(sizes):
-        ix = _bench_indexing(es, index, n)
-        total_indexed += n
-        sl = _bench_search_latency(es, index, runs=20)
-        results.append({
-            "cumulative_docs": total_indexed,
-            "batch_size": n,
-            "index_docs_per_sec": ix["docs_per_sec"],
-            "search_avg_ms": sl["avg_ms"],
-            "search_p95_ms": sl["p95_ms"],
-        })
-        progress_bar.progress((step + 1) / len(sizes), text=f"Đã test {total_indexed:,} documents...")
-    return results
-
-
 def page_benchmark():
     st.title("⚡ Performance Benchmark")
     st.caption("Đánh giá hiệu năng Elasticsearch: indexing throughput, search latency, aggregation latency, scalability")
 
     st.info("Benchmark sẽ tạo một index tạm thời, chạy các bài test, và xóa sau khi hoàn thành.")
 
-    bench_index = "bench_bus_waypoints_ui"
-
     if st.button("🚀 Chạy Benchmark", type="primary"):
         try:
-            es = _get_es_client()
-            es.info()  # Validate connection
+            result = run_benchmark()
         except Exception as e:
-            st.error(f"Không thể kết nối Elasticsearch: {e}")
+            st.error(f"Không thể chạy benchmark: {e}")
             return
-
-        # Clean up any existing bench index
-        if es.indices.exists(index=bench_index):
-            es.indices.delete(index=bench_index)
-        es.indices.create(index=bench_index, **BENCH_MAPPING)
 
         # ── 1. Indexing throughput ──
         st.subheader("1️⃣ Indexing Throughput (10,000 documents)")
-        with st.spinner("Đang benchmark indexing..."):
-            ix_result = _bench_indexing(es, bench_index, 10_000)
+        ix_result = result.get("indexing", {})
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Documents", f"{ix_result['documents']:,}")
-        c2.metric("Thời gian", f"{ix_result['elapsed_sec']:.2f}s")
-        c3.metric("Throughput", f"{ix_result['docs_per_sec']:,.0f} docs/s")
-        c4.metric("Errors", str(ix_result["errors"]))
+        c1.metric("Documents", f"{int(ix_result.get('documents', 0)):,}")
+        c2.metric("Thời gian", f"{float(ix_result.get('elapsed_sec', 0)):.2f}s")
+        c3.metric("Throughput", f"{float(ix_result.get('docs_per_sec', 0)):,.0f} docs/s")
+        c4.metric("Errors", str(ix_result.get("errors", 0)))
 
         st.divider()
 
         # ── 2. Search latency ──
         st.subheader("2️⃣ Geo Search Latency (50 queries)")
-        with st.spinner("Đang benchmark search latency..."):
-            sl_result = _bench_search_latency(es, bench_index, runs=50)
+        sl_result = result.get("search_latency", {})
         c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Min", f"{sl_result['min_ms']:.2f} ms")
-        c2.metric("Avg", f"{sl_result['avg_ms']:.2f} ms")
-        c3.metric("Median", f"{sl_result['median_ms']:.2f} ms")
-        c4.metric("P95", f"{sl_result['p95_ms']:.2f} ms")
-        c5.metric("Max", f"{sl_result['max_ms']:.2f} ms")
+        c1.metric("Min", f"{float(sl_result.get('min_ms', 0)):.2f} ms")
+        c2.metric("Avg", f"{float(sl_result.get('avg_ms', 0)):.2f} ms")
+        c3.metric("Median", f"{float(sl_result.get('median_ms', 0)):.2f} ms")
+        c4.metric("P95", f"{float(sl_result.get('p95_ms', 0)):.2f} ms")
+        c5.metric("Max", f"{float(sl_result.get('max_ms', 0)):.2f} ms")
 
         st.divider()
 
         # ── 3. Aggregation latency ──
         st.subheader("3️⃣ Aggregation Latency (30 queries)")
-        with st.spinner("Đang benchmark aggregation latency..."):
-            al_result = _bench_aggregation_latency(es, bench_index, runs=30)
+        al_result = result.get("aggregation_latency", {})
         c1, c2, c3, c4, c5 = st.columns(5)
-        c1.metric("Min", f"{al_result['min_ms']:.2f} ms")
-        c2.metric("Avg", f"{al_result['avg_ms']:.2f} ms")
-        c3.metric("Median", f"{al_result['median_ms']:.2f} ms")
-        c4.metric("P95", f"{al_result['p95_ms']:.2f} ms")
-        c5.metric("Max", f"{al_result['max_ms']:.2f} ms")
+        c1.metric("Min", f"{float(al_result.get('min_ms', 0)):.2f} ms")
+        c2.metric("Avg", f"{float(al_result.get('avg_ms', 0)):.2f} ms")
+        c3.metric("Median", f"{float(al_result.get('median_ms', 0)):.2f} ms")
+        c4.metric("P95", f"{float(al_result.get('p95_ms', 0)):.2f} ms")
+        c5.metric("Max", f"{float(al_result.get('max_ms', 0)):.2f} ms")
 
         st.divider()
 
         # ── 4. Scalability ──
         st.subheader("4️⃣ Scalability Test")
-        # Reset index for scalability
-        es.indices.delete(index=bench_index)
-        es.indices.create(index=bench_index, **BENCH_MAPPING)
-
-        progress_bar = st.progress(0, text="Bắt đầu scalability test...")
-        sc_results = _bench_scalability(es, bench_index, progress_bar)
-        progress_bar.progress(1.0, text="Hoàn thành!")
-
+        sc_results = result.get("scalability", [])
         sc_df = pd.DataFrame(sc_results)
         st.dataframe(sc_df, use_container_width=True)
 
@@ -736,9 +664,7 @@ def page_benchmark():
             chart_df = sc_df.set_index("cumulative_docs")[["search_avg_ms", "search_p95_ms"]]
             st.line_chart(chart_df)
 
-        # Cleanup
-        es.indices.delete(index=bench_index, ignore=[404])
-        st.success("✅ Benchmark hoàn thành! Index tạm đã được xóa.")
+        st.success("✅ Benchmark hoàn thành! (Backend tự tạo & xóa index tạm.)")
 
     else:
         st.write("Nhấn nút **Chạy Benchmark** để bắt đầu đánh giá hiệu năng Elasticsearch.")

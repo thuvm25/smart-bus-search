@@ -50,7 +50,10 @@ docker compose up --build
 Mở terminal mới (giữ docker compose chạy):
 
 ```bash
-# Cài dependencies cho scripts
+# macOS (PEP-668) khuyên dùng venv để cài dependencies cho scripts
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -U pip
 pip install pandas python-dotenv elasticsearch
 
 # Tiền xử lý raw JSON → CSV sạch

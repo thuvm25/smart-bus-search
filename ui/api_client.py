@@ -80,3 +80,18 @@ def get_active_count(minutes: int = 5) -> dict:
 def get_index_stats() -> dict:
     """Get basic index-level statistics."""
     return get_json("analytics/stats")
+
+
+def get_realtime(window_seconds: int = 60) -> dict:
+    """Get realtime ingest metrics for the last N seconds."""
+    return get_json("analytics/realtime", {"window_seconds": window_seconds})
+
+
+def run_benchmark() -> dict:
+    """Run benchmarks via backend (backend has ES access).
+
+    Uses a longer timeout since benchmark can take 10-30+ seconds.
+    """
+    resp = requests.post(_url("benchmark/run"), json={}, timeout=120)
+    resp.raise_for_status()
+    return resp.json()
