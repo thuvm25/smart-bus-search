@@ -1,14 +1,21 @@
 """Utility functions for route mapping."""
 import json
-from pathlib import Path
+import os
 from functools import lru_cache
+from pathlib import Path
 from typing import Dict, Optional
 
 
-# /app/app/core/route_mapping.py -> /app
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-ROUTE_MAPPING_PATH = PROJECT_ROOT / "data" / "raw" / "vehicle_route_mapping.json"
-BUS_ROUTES_PATH = PROJECT_ROOT / "bus_routes.json"
+def _project_root() -> Path:
+    """Resolve project root: /app in Docker, or repo root locally."""
+    env_root = os.getenv("PROJECT_ROOT")
+    if env_root:
+        return Path(env_root)
+    return Path(__file__).resolve().parent.parent.parent
+
+
+ROUTE_MAPPING_PATH = _project_root() / "data" / "raw" / "vehicle_route_mapping.json"
+BUS_ROUTES_PATH = _project_root() / "bus_routes.json"
 
 
 @lru_cache(maxsize=1)
@@ -17,14 +24,12 @@ def load_route_mapping() -> Dict[str, dict]:
 
     Returns:
         Dict mapping vehicle ID to {'route_id': int, 'route_no': str}.
-        Note: these values come from vehicle_route_mapping and are not
-        assumed to be join keys for bus_routes/bus_stops datasets.
     """
     try:
         with open(ROUTE_MAPPING_PATH, 'r') as f:
             return json.load(f)
     except Exception as e:
-        print(f"Warning: Could not load route mapping: {e}")
+        print(f"Warning: Could not load route mapping from {ROUTE_MAPPING_PATH}: {e}")
         return {}
 
 
@@ -54,20 +59,12 @@ def load_bus_routes() -> Dict[int, dict]:
             }
         return out
     except Exception as e:
-        print(f"Warning: Could not load bus_routes: {e}")
+        print(f"Warning: Could not load bus_routes from {BUS_ROUTES_PATH}: {e}")
         return {}
 
 
 def get_route_info(vehicle_id: str) -> Optional[dict]:
-    """Get route info for a vehicle ID.
-
-    Args:
-        vehicle_id: Vehicle hash ID
-
-    Returns:
-        {'route_id': int, 'route_no': str, 'route_name': str | None}
-        or None if not found.
-    """
+    """Get route info for a vehicle ID."""
     base = load_route_mapping().get(vehicle_id)
     if not isinstance(base, dict):
         return None

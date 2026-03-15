@@ -5,39 +5,6 @@ from __future__ import annotations
 from elasticsearch import Elasticsearch
 
 
-def realtime_ingest_metrics(
-    es: Elasticsearch,
-    index: str,
-    window_seconds: int = 60,
-) -> dict:
-    """Realtime ingest metrics for the last N seconds.
-
-    Returns:
-      - records: total documents in the window
-      - unique_vehicles: distinct vehicle count in the window
-      - latest_datetime: most recent datetime seen (may be None)
-      - window_seconds: echo of the window
-    """
-    window_seconds = max(1, int(window_seconds))
-    body = {
-        "size": 0,
-        "query": {"range": {"datetime": {"gte": f"now-{window_seconds}s"}}},
-        "aggs": {
-            "unique_vehicles": {"cardinality": {"field": "vehicle"}},
-            "latest_datetime": {"max": {"field": "datetime"}},
-        },
-    }
-    resp = es.search(index=index, **body)
-    aggs = resp.get("aggregations", {})
-    latest = aggs.get("latest_datetime", {}).get("value_as_string")
-    return {
-        "window_seconds": window_seconds,
-        "records": int(resp.get("hits", {}).get("total", {}).get("value", 0)),
-        "unique_vehicles": int(aggs.get("unique_vehicles", {}).get("value", 0)),
-        "latest_datetime": latest,
-    }
-
-
 def geo_grid_density(
     es: Elasticsearch,
     index: str,

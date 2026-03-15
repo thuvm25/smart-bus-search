@@ -1,3 +1,4 @@
+version: "3.9"
 
 services:
   elasticsearch:
@@ -43,10 +44,8 @@ services:
       CSV_PATH: /app/data/processed/bus_gps_clean.csv
       BATCH_SIZE: "200"
       SEND_INTERVAL: "2"
-      LOOP: "true"
     volumes:
       - ./data:/app/data:ro
-    restart: unless-stopped
     profiles:
       - simulate
 
@@ -59,19 +58,6 @@ services:
       BACKEND_URL: http://backend:8000
     ports:
       - "8501:8501"
-
-  benchmark:
-    build:
-      context: .
-      dockerfile: benchmark/Dockerfile
-    container_name: smart-bus-benchmark
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    environment:
-      ES_HOST: http://elasticsearch:9200
-    profiles:
-      - benchmark
 
 volumes:
   es-data:

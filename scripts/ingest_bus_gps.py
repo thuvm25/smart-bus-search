@@ -38,14 +38,16 @@ def main() -> None:
             lat = doc.pop("y")
             doc["location"] = {"lon": float(lon), "lat": float(lat)}
 
-            # Convert NaN/None values to None for JSON serialization
             cleaned_doc = {}
             for key, val in doc.items():
-                # Skip NaN and None values (Elasticsearch will use defaults)
-                if pd.isna(val):
-                    cleaned_doc[key] = None
-                else:
-                    cleaned_doc[key] = val
+                if val is None:
+                    continue
+                try:
+                    if pd.isna(val):
+                        continue
+                except (TypeError, ValueError):
+                    pass
+                cleaned_doc[key] = val
 
             yield {"_index": es_index, "_source": cleaned_doc}
 

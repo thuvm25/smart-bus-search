@@ -3,14 +3,21 @@ from __future__ import annotations
 
 import json
 import math
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
 
-# /app/app/core/stop_lookup.py -> /app
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-BUS_STOPS_PATH = PROJECT_ROOT / "bus_stops.json"
+def _project_root() -> Path:
+    """Resolve project root: /app in Docker, or repo root locally."""
+    env_root = os.getenv("PROJECT_ROOT")
+    if env_root:
+        return Path(env_root)
+    return Path(__file__).resolve().parent.parent.parent
+
+
+BUS_STOPS_PATH = _project_root() / "bus_stops.json"
 MAX_MATCH_DISTANCE_M = 300.0
 
 
@@ -42,7 +49,7 @@ def load_stops() -> list[dict]:
             if s.get("lat") is not None and s.get("lng") is not None and s.get("stop_name")
         ]
     except Exception as e:
-        print(f"Warning: Could not load bus stops: {e}")
+        print(f"Warning: Could not load bus stops from {BUS_STOPS_PATH}: {e}")
         return []
 
 

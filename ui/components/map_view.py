@@ -11,10 +11,12 @@ def render_map(items: list[dict[str, Any]]) -> None:
 
     rows = []
     for item in items:
-        src = item.get("_source", item)
-        loc = src.get("location") or {}
-        lat = loc.get("lat")
-        lon = loc.get("lon")
+        lat = item.get("lat")
+        lon = item.get("lon")
+        if lat is None or lon is None:
+            loc = item.get("location") or {}
+            lat = lat or loc.get("lat")
+            lon = lon or loc.get("lon")
         if lat is None or lon is None:
             continue
         rows.append({"lat": lat, "lon": lon})
@@ -25,4 +27,3 @@ def render_map(items: list[dict[str, Any]]) -> None:
 
     df = pd.DataFrame(rows)
     st.map(df)
-

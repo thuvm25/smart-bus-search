@@ -33,8 +33,6 @@ def post_json(path: str, payload: dict) -> dict:
     return resp.json()
 
 
-# ─── Search ──────────────────────────────────────────────────────────
-
 def search_nearby(lat: float, lon: float, radius_m: int = 500, limit: int | None = None) -> dict:
     """Search for nearby buses using GET."""
     params = {"lat": lat, "lon": lon, "radius_m": radius_m}
@@ -48,58 +46,41 @@ def search_active(minutes: int = 0) -> dict:
     return post_json("search/active", {"minutes": minutes})
 
 
-def search_vehicle_trace(vehicle: str, minutes: int = 0) -> dict:
-    """Get GPS trace for a vehicle. minutes=0 means full history (historical data)."""
+def search_vehicle_trace(vehicle: str, minutes: int = 0, timeout_sec: int = 60) -> dict:
+    """Get GPS trace for a vehicle. minutes=0 means full history. Can take 30–60s for large traces."""
     payload = {"vehicle": vehicle, "time_window_minutes": minutes}
-    return post_json("search/vehicle-trace", payload)
+    resp = requests.post(_url("search/vehicle-trace"), json=payload, timeout=timeout_sec)
+    resp.raise_for_status()
+    return resp.json()
 
 
-def search_text(q: str, minutes: int | None = None, limit: int = 200) -> dict:
-    """Fuzzy text search across route_name/stop_name (and exact route_no/vehicle)."""
-    params = {"q": q, "limit": limit}
-    if minutes is not None:
-        params["minutes"] = minutes
-    return get_json("search/text", params)
-
-
-# ─── Analytics ───────────────────────────────────────────────────────
-
-def get_density(precision: int = 5, minutes: int | None = None) -> dict:
-    """Get bus density per geohash cell (heatmap data)."""
-    params = {"precision": precision}
-    if minutes is not None:
-        params["minutes"] = minutes
-    return get_json("analytics/density", params)
-
-
-def get_speed_stats(minutes: int | None = None) -> dict:
-    """Get speed statistics (min/avg/max/histogram)."""
-    params = {}
-    if minutes is not None:
-        params["minutes"] = minutes
-    return get_json("analytics/speed", params)
-
-
-def get_active_count(minutes: int = 5) -> dict:
-    """Get number of distinct active vehicles in last N minutes."""
-    return get_json("analytics/active-count", {"minutes": minutes})
-
-
-def get_index_stats() -> dict:
-    """Get basic index-level statistics."""
+def get_analytics_stats() -> dict:
+    """Index stats (doc count, etc.)."""
     return get_json("analytics/stats")
 
 
-def get_realtime(window_seconds: int = 60) -> dict:
-    """Get realtime ingest metrics for the last N seconds."""
-    return get_json("analytics/realtime", {"window_seconds": window_seconds})
+def get_analytics_density(precision: int = 5, minutes: int | None = None) -> dict:
+    """Geohash grid density."""
+    params = {"precision": precision}
+    if minutes is not None:
+        params["minutes"] = minutes
+    return get_json("analytics/density", params=params)
 
 
-def run_benchmark() -> dict:
-    """Run benchmarks via backend (backend has ES access).
+def get_analytics_active_count(minutes: int = 5) -> dict:
+    """Active vehicles count in last N minutes."""
+    return get_json("analytics/active-count", params={"minutes": minutes})
 
-    Uses a longer timeout since benchmark can take 10-30+ seconds.
-    """
-    resp = requests.post(_url("benchmark/run"), json={}, timeout=120)
+
+def get_analytics_speed(minutes: int | None = None) -> dict:
+    """Speed statistics."""
+    params = {} if minutes is None else {"minutes": minutes}
+    return get_json("analytics/speed", params=params)
+
+
+def run_benchmark(timeout_sec: int = 120) -> dict:
+    """Run benchmark suite (indexing, search, aggregation). Can take 1–2 minutes."""
+    resp = requests.post(_url("benchmark/run"), json={}, timeout=timeout_sec)
     resp.raise_for_status()
     return resp.json()
+

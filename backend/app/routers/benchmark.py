@@ -123,7 +123,13 @@ def _bench_aggregation_latency(es: Elasticsearch, index: str, runs: int = 30) ->
     }
 
 
-# ─── Endpoint ────────────────────────────────────────────────────────
+# ─── Endpoints ───────────────────────────────────────────────────────
+
+@router.get("")
+async def benchmark_info() -> dict:
+    """Confirm benchmark router is mounted. Use POST /api/benchmark/run to run."""
+    return {"status": "ok", "run": "POST /api/benchmark/run"}
+
 
 @router.post("/run")
 async def run_benchmark(

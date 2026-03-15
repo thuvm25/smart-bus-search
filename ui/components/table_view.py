@@ -9,22 +9,19 @@ def render_table(items: list[dict[str, Any]]) -> None:
         st.info("Không có bản ghi nào.")
         return
 
+    display_cols = [
+        "vehicle", "datetime", "speed", "ignition", "heading",
+        "aircon", "door_up", "door_down", "route_id", "route_no",
+        "route_name", "stop_name", "lat", "lon",
+    ]
+
     rows = []
     for item in items:
-        src = item.get("_source", item)
-        rows.append(
-            {
-                "vehicle": src.get("vehicle"),
-                "datetime": src.get("datetime"),
-                "ignition": src.get("ignition"),
-                "heading": src.get("heading"),
-                "aircon": src.get("aircon"),
-                "door_up": src.get("door_up"),
-                "door_down": src.get("door_down"),
-                "route_name": src.get("route_name"),
-            }
-        )
+        row = {}
+        for col in display_cols:
+            row[col] = item.get(col)
+        rows.append(row)
 
     df = pd.DataFrame(rows)
-    st.dataframe(df)
-
+    present_cols = [c for c in display_cols if c in df.columns and df[c].notna().any()]
+    st.dataframe(df[present_cols] if present_cols else df, use_container_width=True)
