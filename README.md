@@ -20,6 +20,8 @@ Streamlit UI      GPS Simulator
 
 ## Hướng dẫn nhanh cho member
 
+**Bản chi tiết hơn (hai cách tải data, xử lý lỗi, Kaggle):** xem [docs/HUONG_DAN.md](docs/HUONG_DAN.md).
+
 ### Bước 1 — Clone repo
 
 ```bash

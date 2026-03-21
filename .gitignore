@@ -17,6 +17,9 @@ data/processed/*.csv
 .env
 .env.local
 
+# Kaggle API credentials (never commit)
+kaggle.json
+
 # OS
 .DS_Store
 Thumbs.db
