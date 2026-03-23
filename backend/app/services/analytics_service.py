@@ -111,6 +111,96 @@ def speed_statistics(
     }
 
 
+def timeline(
+    es: Elasticsearch,
+    index: str,
+    minutes: int = 60,
+    interval: str = "5m",
+) -> dict:
+    """Time-bucketed vehicle activity: how many buses were active per interval.
+
+    Args:
+        minutes: look-back window (default 60).
+        interval: bucket size — e.g. '5m', '15m', '1h'.
+    """
+    body = {
+        "size": 0,
+        "query": {"range": {"datetime": {"gte": f"now-{minutes}m"}}},
+        "aggs": {
+            "over_time": {
+                "date_histogram": {
+                    "field": "datetime",
+                    "fixed_interval": interval,
+                    "min_doc_count": 0,
+                    "extended_bounds": {
+                        "min": f"now-{minutes}m",
+                        "max": "now",
+                    },
+                },
+                "aggs": {
+                    "unique_vehicles": {"cardinality": {"field": "vehicle"}},
+                },
+            }
+        },
+    }
+    resp = es.search(index=index, **body)
+    buckets = resp["aggregations"]["over_time"]["buckets"]
+    points = [
+        {
+            "datetime": b["key_as_string"],
+            "records": b["doc_count"],
+            "unique_vehicles": b["unique_vehicles"]["value"],
+        }
+        for b in buckets
+    ]
+    return {
+        "points": points,
+        "total_buckets": len(points),
+        "interval": interval,
+        "time_window_minutes": minutes,
+    }
+
+
+def route_stats(
+    es: Elasticsearch,
+    index: str,
+    minutes: int | None = None,
+) -> dict:
+    """Per-route aggregation: bus count, avg speed, record count per route."""
+    filters: list[dict] = [{"exists": {"field": "route_no"}}]
+    if minutes:
+        filters.append({"range": {"datetime": {"gte": f"now-{minutes}m"}}})
+
+    body = {
+        "size": 0,
+        "query": {"bool": {"filter": filters}},
+        "aggs": {
+            "by_route": {
+                "terms": {"field": "route_no", "size": 500},
+                "aggs": {
+                    "unique_vehicles": {"cardinality": {"field": "vehicle"}},
+                    "avg_speed": {"avg": {"field": "speed"}},
+                    "latest": {"max": {"field": "datetime"}},
+                },
+            }
+        },
+    }
+    resp = es.search(index=index, **body)
+    buckets = resp["aggregations"]["by_route"]["buckets"]
+    routes = [
+        {
+            "route_no": b["key"],
+            "record_count": b["doc_count"],
+            "unique_vehicles": b["unique_vehicles"]["value"],
+            "avg_speed": round(b["avg_speed"]["value"], 2) if b["avg_speed"]["value"] is not None else None,
+            "latest_record": b["latest"]["value_as_string"] if b["latest"].get("value_as_string") else None,
+        }
+        for b in buckets
+    ]
+    routes.sort(key=lambda r: r["unique_vehicles"], reverse=True)
+    return {"routes": routes, "total_routes": len(routes)}
+
+
 def index_stats(es: Elasticsearch, index: str) -> dict:
     """Basic index statistics for the dashboard."""
     try:
