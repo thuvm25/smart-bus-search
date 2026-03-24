@@ -8,7 +8,9 @@ from ..services.analytics_service import (
     active_vehicles_count,
     geo_grid_density,
     index_stats,
+    route_stats,
     speed_statistics,
+    timeline,
 )
 
 router = APIRouter()
@@ -43,6 +45,27 @@ async def speed(
 ) -> dict:
     """Speed statistics across all records."""
     return speed_statistics(es, index, minutes=minutes)
+
+
+@router.get("/timeline")
+async def timeline_endpoint(
+    minutes: int = Query(60, ge=1),
+    interval: str = Query("5m", description="Bucket size, e.g. '5m', '15m', '1h'"),
+    es: Elasticsearch = Depends(get_es_client),
+    index: str = Depends(get_index_name),
+) -> dict:
+    """Time-bucketed vehicle activity over the last N minutes."""
+    return timeline(es, index, minutes=minutes, interval=interval)
+
+
+@router.get("/route-stats")
+async def route_stats_endpoint(
+    minutes: int | None = Query(None, ge=1),
+    es: Elasticsearch = Depends(get_es_client),
+    index: str = Depends(get_index_name),
+) -> dict:
+    """Per-route statistics: vehicle count, avg speed, record count."""
+    return route_stats(es, index, minutes=minutes)
 
 
 @router.get("/stats")

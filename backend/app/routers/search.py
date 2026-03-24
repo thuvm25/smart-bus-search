@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from elasticsearch import Elasticsearch
 
-from ..core.route_mapping import get_route_info
-from ..core.stop_lookup import get_nearest_stop_name
+from ..core.route_mapping import get_route_info, load_bus_routes
+from ..core.stop_lookup import get_nearest_stop_name, load_stops
 from ..dependencies import get_es_client, get_index_name
 
 router = APIRouter()
@@ -215,3 +215,139 @@ async def vehicle_trace(
         "mapping_route_no": mapping_route_no,
         "mapping_route_id": mapping_route_id,
     }
+
+
+@router.get("/by-route")
+async def search_by_route(
+    route_no: str = Query(..., description="Route number, e.g. '52'"),
+    minutes: int = Query(0, ge=0, description="Time window in minutes (0 = all data)"),
+    limit: int = Query(500, ge=1, le=5000),
+    es: Elasticsearch = Depends(get_es_client),
+    index: str = Depends(get_index_name),
+) -> dict:
+    """Find all buses currently on a specific route (latest position per vehicle)."""
+    filters: list[dict] = [{"term": {"route_no": route_no}}]
+    if minutes > 0:
+        filters.append({"range": {"datetime": {"gte": f"now-{minutes}m"}}})
+
+    body = {
+        "size": limit,
+        "query": {"bool": {"filter": filters}},
+        "sort": [{"datetime": {"order": "desc", "unmapped_type": "date"}}],
+        "collapse": {"field": "vehicle"},
+        "aggs": {"unique_vehicles": {"cardinality": {"field": "vehicle"}}},
+    }
+    resp = es.search(index=index, **body)
+    hits = resp["hits"]["hits"]
+    unique = resp["aggregations"]["unique_vehicles"]["value"]
+
+    # Look up route name from bus_routes.json
+    routes = load_bus_routes()
+    route_name = None
+    for r in routes.values():
+        if r.get("bus_no") == route_no:
+            route_name = r.get("route_name")
+            break
+
+    items = []
+    for h in hits:
+        src = h["_source"]
+        loc = src.get("location", {})
+        lat = loc.get("lat")
+        lon = loc.get("lon")
+        stop_name = get_nearest_stop_name(lat, lon) if lat is not None and lon is not None else None
+        items.append({
+            "vehicle": src.get("vehicle"),
+            "datetime": src.get("datetime"),
+            "lat": lat,
+            "lon": lon,
+            "speed": src.get("speed"),
+            "ignition": src.get("ignition"),
+            "heading": src.get("heading"),
+            "route_no": route_no,
+            "route_name": route_name or src.get("route_name"),
+            "stop_name": stop_name,
+        })
+
+    return {
+        "items": items,
+        "route_no": route_no,
+        "route_name": route_name,
+        "total_vehicles": unique,
+        "returned": len(items),
+    }
+
+
+@router.get("/by-stop")
+async def search_by_stop(
+    stop_name: str = Query(..., description="Bus stop name (partial match supported)"),
+    radius_m: int = Query(300, ge=50, le=5000),
+    minutes: int | None = Query(None, ge=0),
+    limit: int = Query(200, ge=1, le=5000),
+    es: Elasticsearch = Depends(get_es_client),
+    index: str = Depends(get_index_name),
+) -> dict:
+    """Find buses near a named bus stop. Looks up stop coordinates then runs a radius search."""
+    stops = load_stops()
+    # Find matching stop (case-insensitive partial match)
+    matched_stop = None
+    query_lower = stop_name.lower()
+    for s in stops:
+        if query_lower in s.get("stop_name", "").lower():
+            matched_stop = s
+            break
+
+    if not matched_stop:
+        return {
+            "items": [],
+            "stop_name": stop_name,
+            "matched_stop": None,
+            "error": f"No stop found matching '{stop_name}'",
+            "total": 0,
+            "returned": 0,
+        }
+
+    lat = float(matched_stop["lat"])
+    lon = float(matched_stop["lng"])
+
+    result = _nearby_query(index, lat, lon, radius_m, minutes, limit, es)
+    result["stop_name"] = matched_stop["stop_name"]
+    result["matched_stop"] = {
+        "stop_name": matched_stop["stop_name"],
+        "stop_id": matched_stop.get("stop_id"),
+        "lat": lat,
+        "lon": lon,
+    }
+    return result
+
+
+@router.get("/routes")
+async def list_routes() -> dict:
+    """List all known bus routes from the route catalog."""
+    routes = load_bus_routes()
+    items = []
+    for bus_id, info in routes.items():
+        items.append({
+            "route_id": bus_id,
+            "route_no": info.get("bus_no"),
+            "route_name": info.get("route_name"),
+        })
+    items.sort(key=lambda r: r.get("route_no") or "")
+    return {"items": items, "total": len(items)}
+
+
+@router.get("/stops")
+async def list_stops() -> dict:
+    """List all known bus stops from the stop catalog."""
+    stops = load_stops()
+    items = [
+        {
+            "stop_id": s.get("stop_id"),
+            "stop_name": s.get("stop_name"),
+            "lat": s.get("lat"),
+            "lon": s.get("lng"),
+        }
+        for s in stops
+    ]
+    items.sort(key=lambda s: s.get("stop_name") or "")
+    return {"items": items, "total": len(items)}
