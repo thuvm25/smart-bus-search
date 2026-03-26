@@ -8,6 +8,7 @@ venv/
 # Data (too large for git)
 data/raw/*.csv
 data/raw/*.json
+data/raw/data/
 data/raw/part*/
 data/processed/*.csv
 !data/raw/.gitkeep
@@ -27,4 +28,10 @@ Thumbs.db
 # IDE
 .idea/
 .vscode/
+.cursor/
+REPORT.md
+docs/slides_clb4_3_9.html
 *.swp
+
+# Docker volumes
+es-data/

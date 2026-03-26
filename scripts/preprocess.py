@@ -15,7 +15,9 @@ def main() -> None:
     """Load and preprocess bus GPS waypoints from JSON files.
 
     By default, uses data/raw/sample.json (~214k records).
-    Set env var PROCESS_FULL_DATASET=true to process all part1/part2 files (~518 files).
+    Set env var PROCESS_FULL_DATASET=true to process all raw files.
+    Preferred layout: data/raw/data/*.json (flat).
+    Legacy layout is still supported: data/raw/part*/part*/*.json.
     """
 
     # Default: use sample.json for faster development
@@ -24,8 +26,11 @@ def main() -> None:
         print("Using sample.json for quick development (~214k records)")
         print("To process full dataset, run: PROCESS_FULL_DATASET=true python scripts/preprocess.py")
     else:
-        # Full dataset: all sub_raw_*.json from part1/part2
-        json_files = sorted(glob.glob("data/raw/part*/part*/*.json"))
+        # Preferred full dataset layout: flat data/raw/data/*.json
+        json_files = sorted(glob.glob("data/raw/data/*.json"))
+        if not json_files:
+            # Backward compatibility: all sub_raw_*.json from part1/part2
+            json_files = sorted(glob.glob("data/raw/part*/part*/*.json"))
         print(f"⚠️ Processing FULL dataset: {len(json_files)} JSON files (may take 10-30 minutes)")
 
     if not json_files:

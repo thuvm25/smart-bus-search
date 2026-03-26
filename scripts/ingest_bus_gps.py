@@ -1,3 +1,13 @@
+"""
+Bulk ingest historical GPS data directly into Elasticsearch.
+
+Use this for initial data loading (bypass Kafka pipeline).
+For real-time simulation, use the simulator → Kafka → Logstash → ES flow.
+
+Usage:
+  python scripts/ingest_bus_gps.py
+"""
+
 import os
 from pathlib import Path
 
@@ -16,19 +26,18 @@ def main() -> None:
 
     if not PROCESSED_PATH.exists():
         raise FileNotFoundError(
-            f"Không tìm thấy file processed CSV tại {PROCESSED_PATH}. "
-            "Hãy chạy scripts/preprocess.py trước."
+            f"CSV not found at {PROCESSED_PATH}. "
+            "Run scripts/preprocess.py first."
         )
 
     df = pd.read_csv(PROCESSED_PATH)
     if not {"x", "y"}.issubset(df.columns):
-        raise ValueError("CSV cần có cột 'x' (lon) và 'y' (lat).")
+        raise ValueError("CSV needs columns 'x' (lon) and 'y' (lat).")
 
-    # Create Elasticsearch client with compatible API version
     es = Elasticsearch(
         es_host,
         request_timeout=30,
-        headers={"Accept": "application/json", "Content-Type": "application/json"}
+        headers={"Accept": "application/json", "Content-Type": "application/json"},
     )
 
     def _iter_docs():
@@ -37,6 +46,8 @@ def main() -> None:
             lon = doc.pop("x")
             lat = doc.pop("y")
             doc["location"] = {"lon": float(lon), "lat": float(lat)}
+            doc["lat"] = float(lat)
+            doc["lon"] = float(lon)
 
             cleaned_doc = {}
             for key, val in doc.items():
@@ -51,29 +62,20 @@ def main() -> None:
 
             yield {"_index": es_index, "_source": cleaned_doc}
 
-    try:
-        success_count = 0
-        error_count = 0
-        for ok, action in helpers.streaming_bulk(
-            es, _iter_docs(), chunk_size=500,
-            raise_on_error=False
-        ):
-            if ok:
-                success_count += 1
-            else:
-                error_count += 1
-                if error_count <= 3:  # Print first 3 errors only
-                    print(f"Document ingest error: {action}")
-
-        if error_count > 0:
-            print(f"✓ Ingest xong: {success_count} thành công, {error_count} lỗi")
+    success_count = 0
+    error_count = 0
+    for ok, action in helpers.streaming_bulk(
+        es, _iter_docs(), chunk_size=500, raise_on_error=False
+    ):
+        if ok:
+            success_count += 1
         else:
-            print(f"✓ Đã ingest {len(df)} documents vào index '{es_index}'.")
-    except Exception as e:
-        print(f"⚠️ Ingest lỗi: {e}")
-        raise
+            error_count += 1
+            if error_count <= 3:
+                print(f"Error: {action}")
+
+    print(f"Ingest complete: {success_count:,} success, {error_count:,} errors")
 
 
 if __name__ == "__main__":
     main()
-

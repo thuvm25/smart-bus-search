@@ -1,2 +1,2 @@
-pandas
-requests
+pandas>=2.0
+kafka-python>=2.0.2

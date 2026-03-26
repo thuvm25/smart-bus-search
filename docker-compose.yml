@@ -1,6 +1,37 @@
-version: "3.9"
-
 services:
+  # ── Message Broker ─────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: smart-bus-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: smart-bus-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  # ── Storage & Search ───────────────────────────────────────
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
     container_name: smart-bus-elasticsearch
@@ -18,46 +49,59 @@ services:
       timeout: 5s
       retries: 10
 
-  backend:
-    build: ./backend
-    container_name: smart-bus-backend
+  # ── Visualization ──────────────────────────────────────────
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.0
+    container_name: smart-bus-kibana
     depends_on:
       elasticsearch:
         condition: service_healthy
     environment:
-      ES_HOST: http://elasticsearch:9200
-      ES_INDEX: bus_waypoints
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
     ports:
-      - "8000:8000"
-    volumes:
-      - ./data:/app/data:ro
-      - ./bus_routes.json:/app/bus_routes.json:ro
-      - ./bus_stops.json:/app/bus_stops.json:ro
+      - "5601:5601"
 
+  # ── ETL: Kafka → Elasticsearch ─────────────────────────────
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.15.0
+    container_name: smart-bus-logstash
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+    environment:
+      LS_JAVA_OPTS: "-Xms512m -Xmx512m"
+
+  # ── Simulator (Data Producer) ──────────────────────────────
   simulator:
     build: ./simulator
     container_name: smart-bus-simulator
     depends_on:
-      - backend
+      kafka:
+        condition: service_healthy
     environment:
-      BACKEND_URL: http://backend:8000
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: bus-gps-raw
+      # DATA_MODE: json reads raw JSON files from part1/part2 (default)
+      # DATA_MODE: csv reads the pre-processed CSV instead
+      DATA_MODE: "json"
+      JSON_DIR: /app/data/raw
+      VEHICLE_MAP: /app/data/raw/vehicle_route_mapping.json
+      ROUTES_FILE: /app/data/raw/routes_clean.json
+      MAX_FILES: "0"          # 0 = all files; set e.g. "5" for a quick demo
       CSV_PATH: /app/data/processed/bus_gps_clean.csv
-      BATCH_SIZE: "200"
-      SEND_INTERVAL: "2"
+      BATCH_SIZE: "50"
+      DELAY_MS: "200"
+      SPEED_MULTIPLIER: "1.0"
+      LOOP: "false"
     volumes:
       - ./data:/app/data:ro
     profiles:
       - simulate
-
-  ui:
-    build: ./ui
-    container_name: smart-bus-ui
-    depends_on:
-      - backend
-    environment:
-      BACKEND_URL: http://backend:8000
-    ports:
-      - "8501:8501"
 
 volumes:
   es-data:
