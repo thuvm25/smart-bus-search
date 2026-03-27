@@ -60,6 +60,8 @@ services:
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
     ports:
       - "5601:5601"
+    volumes:
+      - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
 
   # ── ETL: Kafka → Elasticsearch ─────────────────────────────
   logstash:

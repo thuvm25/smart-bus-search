@@ -100,7 +100,6 @@ def main() -> None:
         "driver",
         "route_id",
         "route_no",
-        "stop_name",
     }
     essential_cols = list(required_cols) + [
         col for col in df.columns if col not in required_cols and col in extra_cols

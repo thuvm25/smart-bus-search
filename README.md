@@ -3,10 +3,10 @@
 Hệ thống giả lập streaming dữ liệu GPS xe buýt TP.HCM qua pipeline:
 
 ```
-Data (CSV) → Simulator → Kafka → Logstash → Elasticsearch → Kibana
+Data (JSON) → Simulator → Kafka → Logstash → Elasticsearch → Kibana
 ```
 
-Dữ liệu gốc là historical data, được simulate thành real-time streaming để demo hệ thống.
+Dữ liệu gốc là historical data (JSON files), được simulate thành real-time streaming để demo hệ thống.
 
 ## Kiến trúc
 
@@ -15,16 +15,18 @@ Dữ liệu gốc là historical data, được simulate thành real-time stream
 │  Simulator   │────▶│  Kafka  │────▶│ Logstash  │────▶│ Elasticsearch │────▶│ Kibana │
 │ (Producer)   │     │ (Broker)│     │  (ETL)    │     │  (Storage)    │     │ (Viz)  │
 └─────────────┘     └─────────┘     └───────────┘     └───────────────┘     └────────┘
-  Đọc CSV,            Buffer          Parse JSON,       Lưu trữ &           Dashboard
-  shift timestamp,    messages        transform,        index data           realtime
-  gửi từng batch                      đẩy vào ES
+  Đọc JSON files,    Buffer          Parse JSON,       Lưu trữ &           Dashboard
+  shift timestamp,   messages        add @timestamp,   index data           realtime
+  gửi từng batch                     build geo_point,
+  vào topic                          đẩy vào ES
+  bus-gps-raw
 ```
 
 ## Yêu cầu
 
 - **Docker Desktop** (bao gồm Docker Compose)
-- RAM tối thiểu: **6 GB** (cho Kafka + ES + Logstash + Kibana)
-- Không cần cài thêm gì khác
+- **Python 3.9+** (chỉ cần để chạy scripts setup, không cần cho pipeline chính)
+- RAM tối thiểu: **6 GB** (cho Kafka + Zookeeper + ES + Logstash + Kibana)
 
 ## Hướng dẫn nhanh
 
@@ -33,26 +35,14 @@ Dữ liệu gốc là historical data, được simulate thành real-time stream
 ```bash
 git clone <repo-url>
 cd smart-bus-search
-```
-
-Tải dataset từ [HPCC](https://sharefile.hpcc.vn/share/NfpoCRX0) và giải nén vào `data/raw/`.
-
-### Bước 2 — Tiền xử lý dữ liệu
-
-```bash
-pip install pandas
-python scripts/preprocess.py
-```
-
-Kết quả: `data/processed/bus_gps_clean.csv` (~214k records)
-
-### Bước 3 — Khởi động hệ thống
+``` 
+### Bước 2 — Khởi động hệ thống
 
 ```bash
 docker compose up --build -d
 ```
 
-Đợi 1-2 phút để tất cả services khởi động.
+Đợi ~1-2 phút để tất cả services khởi động.
 
 | Service        | URL                    | Mô tả                      |
 |----------------|------------------------|-----------------------------|
@@ -61,42 +51,52 @@ docker compose up --build -d
 | Kibana         | http://localhost:5601  | Dashboard & visualization   |
 | Logstash       | (internal)             | Kafka → ES pipeline         |
 
-### Bước 4 — Tạo ES index (lần đầu)
+### Bước 3 — Tạo ES index & Kibana dashboards
 
 ```bash
-pip install python-dotenv elasticsearch
-python scripts/create_index.py
+cd scripts
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+python create_index.py             # tạo index bus_waypoints với geo_point mapping
+python setup_kibana.py             # tạo Data View + Dashboard + Visualizations
+python setup_kibana_map.py         # tạo Kibana Maps (live map + heatmap)
 ```
 
-### Bước 5 — Chạy Simulator (giả lập real-time)
+### Bước 4 — Chạy Simulator (giả lập real-time)
 
 ```bash
 docker compose --profile simulate up simulator --build
 ```
 
 Simulator sẽ:
-- Đọc CSV theo thứ tự timestamp
-- Shift timestamp về "now" (dữ liệu cũ hiển thị như mới)
+- Đọc JSON files từ `data/raw/` theo thứ tự timestamp
+- Enrich mỗi record với thông tin tuyến (route_id, route_no, route_name)
+- Shift timestamp về "now" để dữ liệu cũ hiển thị như real-time
 - Gửi từng batch vào Kafka topic `bus-gps-raw`
-- Logstash tự động consume và đẩy vào Elasticsearch
+- Logstash consume và đẩy vào Elasticsearch tự động
 - Kibana hiển thị data update liên tục
 
-### Bước 6 — Mở Kibana Dashboard
+### Bước 5 — Xem Dashboard
 
-1. Truy cập http://localhost:5601
-2. Vào **Management → Stack Management → Data Views**
-3. Tạo Data View mới: pattern = `bus_waypoints`, time field = `@timestamp`
-4. Vào **Discover** để xem data streaming vào
-5. Vào **Dashboard** để tạo visualizations
+Truy cập http://localhost:5601 và mở:
+
+| URL | Nội dung |
+|-----|----------|
+| `/app/dashboards#/view/smart-bus-dashboard` | Dashboard tổng hợp real-time |
+| `/app/maps/map/smart-bus-live-map` | Bản đồ GPS + Heatmap mật độ |
 
 ## Cấu hình Simulator
 
-| Variable            | Default         | Mô tả                                 |
-|---------------------|-----------------|----------------------------------------|
-| `BATCH_SIZE`        | 50              | Số records mỗi batch gửi vào Kafka    |
-| `DELAY_MS`          | 200             | Milliseconds giữa các batch           |
-| `SPEED_MULTIPLIER`  | 1.0             | Tốc độ phát (2.0 = nhanh gấp đôi)    |
-| `LOOP`              | false           | Lặp lại khi hết dữ liệu              |
+| Variable            | Default   | Mô tả                                 |
+|---------------------|-----------|----------------------------------------|
+| `DATA_MODE`         | `json`    | `json` = đọc JSON files; `csv` = đọc CSV (legacy) |
+| `BATCH_SIZE`        | `50`      | Số records mỗi batch gửi vào Kafka    |
+| `DELAY_MS`          | `200`     | Milliseconds giữa các batch           |
+| `SPEED_MULTIPLIER`  | `1.0`     | Tốc độ phát (2.0 = nhanh gấp đôi)    |
+| `LOOP`              | `false`   | Lặp lại khi hết dữ liệu              |
+| `MAX_FILES`         | `0`       | Số file JSON tối đa (0 = tất cả)     |
 
 ### Điều khiển khi đang chạy
 
@@ -107,23 +107,13 @@ docker kill --signal=SIGUSR1 smart-bus-simulator
 # Tăng tốc: sửa SPEED_MULTIPLIER trong docker-compose.yml rồi restart simulator
 ```
 
-## Nạp dữ liệu bulk (không qua Kafka)
-
-Nếu muốn nạp toàn bộ data một lần vào ES (bypass pipeline):
-
-```bash
-python scripts/ingest_bus_gps.py
-```
-
 ## Dừng hệ thống
 
 ```bash
+# Dừng (giữ data ES)
 docker compose --profile simulate down
-```
 
-Xóa luôn data ES:
-
-```bash
+# Dừng + xóa toàn bộ data ES
 docker compose --profile simulate down -v
 ```
 
@@ -132,42 +122,75 @@ docker compose --profile simulate down -v
 ```
 ├── data/
 │   ├── raw/                          # dataset gốc (JSON từ HPCC)
-│   └── processed/                    # CSV sau preprocessing
+│   │   ├── data/                     # các file sub_raw_*.json
+│   │   ├── vehicle_route_mapping.json
+│   │   └── routes_clean.json
+│   └── processed/                    # CSV (chỉ dùng khi DATA_MODE=csv)
 │
 ├── scripts/
-│   ├── preprocess.py                 # JSON → CSV sạch
-│   ├── create_index.py               # tạo ES index với mapping
+│   ├── create_index.py               # tạo ES index với geo_point mapping
+│   ├── setup_kibana.py               # tạo Data View, Dashboard, Visualizations
+│   ├── setup_kibana_map.py           # tạo Kibana Maps (live map + heatmap)
+│   ├── preprocess.py                 # JSON → CSV (chỉ cần cho DATA_MODE=csv)
 │   └── ingest_bus_gps.py             # bulk ingest CSV vào ES (bypass Kafka)
 │
 ├── simulator/
 │   ├── Dockerfile
 │   ├── requirements.txt
-│   └── simulate_gps.py              # Kafka producer (giả lập GPS real-time)
+│   └── simulate_gps.py              # Kafka producer — đọc JSON, enrich, stream
 │
 ├── logstash/
 │   ├── config/
-│   │   └── logstash.yml             # Logstash settings
+│   │   └── logstash.yml
 │   └── pipeline/
-│       └── kafka-to-es.conf         # Pipeline: Kafka → ES
+│       └── kafka-to-es.conf         # Kafka → ES: parse JSON, @timestamp, geo_point
 │
-├── docker-compose.yml                # Kafka + ES + Kibana + Logstash + Simulator
-├── .env
-└── .env.example
+├── kibana/
+│   └── kibana.yml                 
+│
+└── docker-compose.yml               # Zookeeper + Kafka + ES + Logstash + Kibana + Simulator
 ```
 
-## Kibana — Gợi ý Dashboard
+## Kibana Dashboard
 
-Sau khi data đã streaming vào, tạo các visualization trong Kibana:
+Sau khi chạy `setup_kibana.py` và `setup_kibana_map.py`, các visualization có sẵn:
 
-- **Time-series line chart**: số lượng GPS records theo thời gian
-- **Map visualization**: vị trí xe buýt trên bản đồ (dùng field `location`)
-- **Metric**: tổng số xe đang hoạt động
-- **Bar chart**: phân bổ tốc độ (speed histogram)
-- **Data table**: top xe buýt theo số records
+| Panel | Loại | Mô tả |
+|-------|------|-------|
+| 📡 Total GPS Pings | Metric | Tổng số GPS records |
+| 🚌 Active Vehicles | Metric | Số xe đang hoạt động |
+| ⏱ GPS Pings / Minute | Bar chart | Tần suất theo thời gian |
+| 🗺 Bus Positions | Vega map | Vị trí xe real-time (OSM, màu theo tốc độ) |
+| 🚀 Speed Distribution | Histogram | Phân bổ tốc độ |
+| 🗺 Top Routes by Pings | Donut chart | Tuyến xe nhiều GPS nhất |
+| 🌡 GPS Density Heatmap | Kibana Maps | Mật độ GPS theo khu vực |
+| 🛣 Vehicle Trajectory | Data table | Thống kê từng xe |
 
 ## Lưu ý khi demo
 
 - Dữ liệu cũ nhưng timestamp được shift về "now" → hiển thị như real-time
-- Dashboard Kibana auto-refresh để thấy data update liên tục
+- Dashboard Kibana auto-refresh mỗi 5 giây
 - Có thể pause/resume stream bất cứ lúc nào
 - Tăng `SPEED_MULTIPLIER` để demo nhanh hơn
+- Base map dùng OpenStreetMap (không cần Elastic Maps Service)
+
+## Chế độ CSV (legacy / bypass Kafka)
+
+Nếu không dùng Kafka và muốn nạp data thẳng vào ES:
+
+```bash
+# 1. Tiền xử lý JSON → CSV
+python scripts/preprocess.py
+
+# 2. Nạp CSV vào ES (bypass pipeline)
+python scripts/ingest_bus_gps.py
+```
+
+Hoặc chạy simulator ở chế độ CSV:
+```yaml
+# docker-compose.yml
+simulator:
+  environment:
+    DATA_MODE: "csv"
+    CSV_PATH: /app/data/processed/bus_gps_clean.csv
+```

@@ -63,10 +63,6 @@ BUS_WAYPOINT_MAPPING = {
                 "type":   "text",
                 "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
             },
-            "stop_name": {
-                "type":   "text",
-                "fields": {"keyword": {"type": "keyword", "ignore_above": 256}},
-            },
         }
     },
 }
