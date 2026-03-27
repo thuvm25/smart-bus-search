@@ -10,13 +10,17 @@ Usage:
 """
 
 import os
+import re
 
 try:
     from dotenv import load_dotenv
 except ImportError:
-    load_dotenv = None  # optional; use ES_HOST / ES_INDEX from the environment
+    load_dotenv = None 
 
 from elasticsearch import Elasticsearch
+
+
+_VALID_INDEX_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._-]*$")
 
 
 BUS_WAYPOINT_MAPPING = {
@@ -68,11 +72,30 @@ BUS_WAYPOINT_MAPPING = {
 }
 
 
+def _read_index_name() -> str:
+    raw_index = os.getenv("ES_INDEX", "bus_waypoints")
+    es_index = raw_index.strip()
+    if not es_index:
+        raise ValueError("ES_INDEX is empty after trimming whitespace.")
+
+    # Fail fast with a clear message if the environment variable was polluted
+    # by pasted shell text or invalid characters.
+    if not _VALID_INDEX_PATTERN.fullmatch(es_index):
+        snippet = raw_index if len(raw_index) <= 120 else f"{raw_index[:117]}..."
+        raise ValueError(
+            "Invalid ES_INDEX value. Use only lowercase letters, digits, dots, "
+            f"underscores, and dashes. Current value: {snippet!r}"
+        )
+    return es_index
+
+
 def main() -> None:
     if load_dotenv is not None:
         load_dotenv()
     es_host = os.getenv("ES_HOST", "http://localhost:9200")
-    es_index = os.getenv("ES_INDEX", "bus_waypoints")
+    es_index = _read_index_name()
+    print(f"Using Elasticsearch host: {es_host}")
+    print(f"Using index name: {es_index}")
 
     es = Elasticsearch(es_host)
 
