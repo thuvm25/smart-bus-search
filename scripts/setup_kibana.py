@@ -387,118 +387,107 @@ def setup_lens(dv_id):
     }])
 
 
-# ── 4. Vega Map (bypasses EMS — uses map.tilemap.url = OSM from kibana.yml) ───
-def setup_vega_map(dv_id):
-    print("\n[4] Vega map (OSM — no EMS dependency)")
+# ── 4. Bus Positions Map (Kibana Maps — OSM base + GPS points) ────────────────
+def setup_live_map(dv_id):
+    """
+    Creates a Kibana Maps saved object with:
+      - OSM tilemap base layer (RASTER_TILE + KIBANA_TILEMAP)
+      - GPS points layer (GEOJSON_VECTOR + ES_SEARCH, colored by speed)
+    """
+    import uuid
 
-    # Vega spec: config.kibana.type="map" → Kibana renders OSM tiles from
-    # map.tilemap.url in kibana.yml, then overlays the Vega marks
-    vega_spec = {
-        "$schema": "https://vega.github.io/schema/vega/v5.json",
-        "config": {
-            "kibana": {
-                "type": "map",
-                "latitude": 10.78,
-                "longitude": 106.66,
-                "zoom": 11,
-                # False → Kibana uses map.tilemap.url (OSM) from kibana.yml instead of EMS
-                "mapStyle": False,
-                "delayRepaint": True,
-            }
+    def uid():
+        return uuid.uuid4().hex[:8]
+
+    print("\n[4] Live map (Kibana Maps — OSM base + GPS points)")
+
+    base_layer = {
+        "id": uid(),
+        "label": "Base Map (OSM)",
+        "minZoom": 0,
+        "maxZoom": 24,
+        "alpha": 1,
+        "visible": True,
+        "type": "RASTER_TILE",
+        "sourceDescriptor": {
+            "type": "KIBANA_TILEMAP",
         },
-        "data": [
-            {
-                "name": "gps",
-                "url": {
-                    "%context%": True,
-                    "%timefield%": "@timestamp",
-                    "index": INDEX,
-                    "body": {
-                        "size": 2000,
-                        "_source": [
-                            "location", "vehicle", "speed",
-                            "route_no", "route_name", "@timestamp",
-                        ],
-                        "sort": [{"@timestamp": {"order": "desc"}}],
-                    },
-                },
-                "format": {"property": "hits.hits"},
-                "transform": [
-                    {"type": "formula", "as": "lon",
-                     "expr": "datum._source.location.lon"},
-                    {"type": "formula", "as": "lat",
-                     "expr": "datum._source.location.lat"},
-                    {"type": "formula", "as": "speed",
-                     "expr": "isValid(datum._source.speed) ? datum._source.speed : 0"},
-                    {"type": "formula", "as": "route",
-                     "expr": "datum._source.route_no || 'N/A'"},
-                    {"type": "formula", "as": "route_name",
-                     "expr": "datum._source.route_name || ''"},
-                    {"type": "formula", "as": "v_short",
-                     "expr": "slice(datum._source.vehicle || '', 0, 10) + '...'"},
-                    {"type": "geopoint", "projection": "projection",
-                     "fields": ["lon", "lat"]},
-                ],
-            }
-        ],
-        "scales": [
-            {
-                "name": "speed_color",
-                "type": "linear",
-                "domain": [0, 80],
-                "range": ["#00B3A4", "#F5A700", "#FF0000"],
-                "clamp": True,
-            }
-        ],
-        "marks": [
-            {
-                "type": "symbol",
-                "from": {"data": "gps"},
-                "encode": {
-                    "update": {
-                        "x": {"field": "x"},
-                        "y": {"field": "y"},
-                        "size": {"value": 55},
-                        "shape": {"value": "circle"},
-                        "fill": {"scale": "speed_color", "field": "speed"},
-                        "fillOpacity": {"value": 0.8},
-                        "stroke": {"value": "white"},
-                        "strokeWidth": {"value": 0.5},
-                        "tooltip": {
-                            "signal": (
-                                "{'🚌 Xe': datum.v_short, "
-                                "'Tuyến': datum.route, "
-                                "'Tên tuyến': datum.route_name, "
-                                "'Tốc độ': datum.speed + ' km/h', "
-                                "'Thời gian': datum._source['@timestamp']}"
-                            ),
-                        },
-                    }
-                },
-            }
-        ],
     }
 
-    create("visualization", "bus-vega-map", {
-        "title": "🗺 Bus Positions (Live Map)",
-        "visState": json.dumps({
-            "title": "Bus Positions (Live Map)",
-            "type": "vega",
-            "aggs": [],
-            "params": {"spec": json.dumps(vega_spec, ensure_ascii=False)},
-        }),
-        "uiStateJSON": "{}",
-        "description": "OSM map via Vega — no EMS dependency",
-        "kibanaSavedObjectMeta": {
-            "searchSourceJSON": json.dumps({
-                "index": dv_id,
-                "query": {"query": "", "language": "kuery"},
-                "filter": [],
-            }),
+    gps_layer = {
+        "id": uid(),
+        "label": "Bus GPS Points",
+        "minZoom": 0,
+        "maxZoom": 24,
+        "alpha": 0.8,
+        "visible": True,
+        "type": "GEOJSON_VECTOR",
+        "sourceDescriptor": {
+            "type": "ES_SEARCH",
+            "id": uid(),
+            "indexPatternId": dv_id,
+            "geoField": "location",
+            "limit": 2048,
+            "filterByMapBounds": True,
+            "tooltipProperties": [
+                "vehicle", "route_no", "route_name", "speed", "@timestamp",
+            ],
+            "sortField": "@timestamp",
+            "sortOrder": "DESC",
+            "scalingType": "TOP_HITS",
+            "topHitsSplitField": "vehicle",
+            "topHitsSize": 1,
         },
+        "style": {
+            "type": "VECTOR",
+            "properties": {
+                "fillColor": {
+                    "type": "DYNAMIC",
+                    "options": {
+                        "field": {"name": "speed", "origin": "source"},
+                        "color": "Green to Red",
+                        "fieldMetaOptions": {"isEnabled": True, "sigma": 3},
+                    },
+                },
+                "lineColor": {
+                    "type": "STATIC",
+                    "options": {"color": "#FFFFFF"},
+                },
+                "lineWidth": {
+                    "type": "STATIC",
+                    "options": {"size": 1},
+                },
+                "iconSize": {
+                    "type": "STATIC",
+                    "options": {"size": 6},
+                },
+                "symbolizeAs": {
+                    "options": {"value": "circle"},
+                },
+            },
+            "isTimeAware": True,
+        },
+    }
+
+    map_state = {
+        "zoom": 11,
+        "center": {"lat": 10.78, "lon": 106.66},
+        "timeFilters": {"from": "now-1h", "to": "now"},
+        "query": {"language": "kuery", "query": ""},
+        "filters": [],
+        "refreshConfig": {"pause": False, "value": 5000},
+    }
+
+    create("map", "bus-live-map", {
+        "title": "🗺 Bus Positions (Live Map)",
+        "description": "Real-time bus positions on OSM — colored by speed",
+        "mapStateJSON": json.dumps(map_state),
+        "layerListJSON": json.dumps([base_layer, gps_layer]),
+        "uiStateJSON": "{}",
+        "bounds": None,
     }, references=[
         {"id": dv_id,
-         "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
+         "name": "indexpattern-datasource-current-indexpattern",
          "type": "index-pattern"},
     ])
 
@@ -525,8 +514,7 @@ def setup_density_map(dv_id):
         "maxZoom": 24,
         "alpha": 1,
         "visible": True,
-        "style": {"type": "TILE"},
-        "type": "TILE",
+        "type": "RASTER_TILE",
         "sourceDescriptor": {
             "type": "KIBANA_TILEMAP",
         },
@@ -590,7 +578,7 @@ def setup_dashboard():
             {"version": "8.15.0", "type": "visualization", "gridData": {"x": 10, "y": 0,  "w": 10, "h": 8,  "i": "p2"}, "panelIndex": "p2", "embeddableConfig": {"enhancements": {}}, "panelRefName": "panel_p2"},
             {"version": "8.15.0", "type": "lens",          "gridData": {"x": 20, "y": 0,  "w": 28, "h": 8,  "i": "p3"}, "panelIndex": "p3", "embeddableConfig": {"enhancements": {}}, "panelRefName": "panel_p3"},
             # Row 2: live map + charts
-            {"version": "8.15.0", "type": "visualization", "gridData": {"x": 0,  "y": 8,  "w": 32, "h": 24, "i": "p4"}, "panelIndex": "p4", "embeddableConfig": {"enhancements": {}}, "panelRefName": "panel_p4"},
+            {"version": "8.15.0", "type": "map",           "gridData": {"x": 0,  "y": 8,  "w": 32, "h": 24, "i": "p4"}, "panelIndex": "p4", "embeddableConfig": {"enhancements": {}}, "panelRefName": "panel_p4"},
             {"version": "8.15.0", "type": "lens",          "gridData": {"x": 32, "y": 8,  "w": 16, "h": 12, "i": "p5"}, "panelIndex": "p5", "embeddableConfig": {"enhancements": {}}, "panelRefName": "panel_p5"},
             {"version": "8.15.0", "type": "lens",          "gridData": {"x": 32, "y": 20, "w": 16, "h": 12, "i": "p6"}, "panelIndex": "p6", "embeddableConfig": {"enhancements": {}}, "panelRefName": "panel_p6"},
             # Row 3: density heatmap (full width)
@@ -615,7 +603,7 @@ def setup_dashboard():
         {"id": "bus-metric-total",     "name": "panel_p1", "type": "visualization"},
         {"id": "bus-metric-vehicles",  "name": "panel_p2", "type": "visualization"},
         {"id": "bus-histogram-time",   "name": "panel_p3", "type": "lens"},
-        {"id": "bus-vega-map",         "name": "panel_p4", "type": "visualization"},
+        {"id": "bus-live-map",          "name": "panel_p4", "type": "map"},
         {"id": "bus-speed-dist",       "name": "panel_p5", "type": "lens"},
         {"id": "bus-top-routes",       "name": "panel_p6", "type": "lens"},
         {"id": "bus-density-heatmap",  "name": "panel_p8", "type": "map"},
@@ -635,7 +623,7 @@ def main():
     dv_id = setup_data_view()
     setup_metrics(dv_id)
     setup_lens(dv_id)
-    setup_vega_map(dv_id)
+    setup_live_map(dv_id)
     setup_density_map(dv_id)
     setup_dashboard()
 

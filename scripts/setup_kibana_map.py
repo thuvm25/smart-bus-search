@@ -98,8 +98,7 @@ def base_map_layer():
         "maxZoom": 24,
         "alpha": 1,
         "visible": True,
-        "style": {"type": "TILE"},
-        "type": "TILE",
+        "type": "RASTER_TILE",
         "sourceDescriptor": {
             "type": "KIBANA_TILEMAP",
         },
@@ -118,7 +117,7 @@ def gps_points_layer():
         "maxZoom": 24,
         "alpha": 0.8,
         "visible": True,
-        "type": "VECTOR",
+        "type": "GEOJSON_VECTOR",
         "sourceDescriptor": {
             "type": "ES_SEARCH",
             "id": uid(),
@@ -131,8 +130,8 @@ def gps_points_layer():
             ],
             "sortField": "@timestamp",
             "sortOrder": "DESC",
-            "scalingType": "LIMIT",
-            "topHitsSplitField": "",
+            "scalingType": "TOP_HITS",
+            "topHitsSplitField": "vehicle",
             "topHitsSize": 1,
         },
         "style": {
