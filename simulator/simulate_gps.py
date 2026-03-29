@@ -274,7 +274,7 @@ def stream_json(
 # ── CSV mode ─────────────────────────────────────────────────────────────────
 def load_csv() -> pd.DataFrame:
     if not os.path.exists(CSV_PATH):
-        print(f"CSV not found at {CSV_PATH}. Run scripts/preprocess.py first.")
+        print(f"CSV not found at {CSV_PATH}. Place a pre-processed CSV at that path.")
         sys.exit(1)
     df = pd.read_csv(CSV_PATH)
     df["datetime"] = pd.to_datetime(df["datetime"], errors="coerce")

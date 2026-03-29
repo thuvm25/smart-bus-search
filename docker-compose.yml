@@ -88,7 +88,7 @@ services:
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       KAFKA_TOPIC: bus-gps-raw
-      # DATA_MODE: json reads raw JSON files from part1/part2 (default)
+      # DATA_MODE: json reads data/raw/data/*.json via JSON_DIR (default)
       # DATA_MODE: csv reads the pre-processed CSV instead
       DATA_MODE: "json"
       JSON_DIR: /app/data/raw

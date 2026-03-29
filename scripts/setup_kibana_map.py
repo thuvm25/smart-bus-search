@@ -11,7 +11,7 @@ Layers:
   - Bus Routes Tracks (ES GeoLine per vehicle — draws movement paths)
 
 Usage:
-  source scripts/.venv/bin/activate
+  source .venv/bin/activate
   python scripts/setup_kibana_map.py
 """
 
