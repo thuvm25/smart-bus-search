@@ -265,6 +265,7 @@ def check_kibana_tilemap():
     The kibana.yml must have:
       map.includeElasticMapsService: false
       map.tilemap.url: "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      map.tilemap.options.attributions: "[OpenStreetMap](https://www.openstreetmap.org/copyright)"
     """
     yml_path = os.path.join(
         os.path.dirname(__file__), "..", "kibana", "kibana.yml"
@@ -275,14 +276,15 @@ def check_kibana_tilemap():
         return
     with open(yml_path) as f:
         content = f.read()
-    if "map.tilemap.url" in content:
-        print(f"  kibana.yml: tilemap URL is configured (OSM base map should work).")
+    if "map.tilemap.url" in content and "map.includeElasticMapsService: false" in content:
+        print("  kibana.yml: OSM tilemap config found. Restart Kibana after changing this file.")
     else:
         print(
-            f"  WARN: map.tilemap.url not set in kibana.yml!\n"
+            f"  WARN: OSM tilemap config is incomplete in kibana.yml!\n"
             f"  Add these lines to {yml_path}:\n"
             f"    map.includeElasticMapsService: false\n"
             f"    map.tilemap.url: \"{OSM_URL}\"\n"
+            f"    map.tilemap.options.attributions: \"[OpenStreetMap](https://www.openstreetmap.org/copyright)\"\n"
             f"  Then restart the kibana container."
         )
 

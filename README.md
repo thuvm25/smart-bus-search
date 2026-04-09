@@ -8,6 +8,33 @@ Data (JSON) → Simulator → Kafka → Logstash → Elasticsearch → Kibana
 
 Dữ liệu gốc là historical data (JSON files), được simulate thành real-time streaming để demo hệ thống.
 
+## Chạy nhanh (TL;DR)
+
+Chạy từ thư mục gốc repo:
+
+```bash
+# 1) Core stack
+docker compose up -d --build
+
+# 2) Setup index + Kibana objects
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r scripts/requirements.txt
+python scripts/create_index.py
+python scripts/setup_kibana.py
+python scripts/setup_kibana_map.py
+
+# 3) Start simulator
+docker compose --profile simulate up -d --build simulator
+
+# 4) Verify data
+curl -s http://localhost:9200/bus_waypoints/_count
+```
+
+Mở Kibana tại `http://localhost:5601`, vào dashboard/map:
+- `/app/dashboards#/view/smart-bus-dashboard`
+- `/app/maps/map/smart-bus-live-map`
+
 ## Kiến trúc
 
 ```
@@ -75,7 +102,16 @@ git clone <repo-url>
 cd smart-bus-search
 ```
 
-Đặt data vào đúng layout:
+### 0.1 Lấy data về máy
+
+Bạn cần có bộ JSON GPS của nhóm (ví dụ file nén `hcmut-gps.zip` hoặc thư mục JSON đã giải nén sẵn).
+
+- Nếu có file nén: copy file nén vào thư mục gốc repo `smart-bus-search/`
+- Nếu đã có sẵn các file JSON: chuẩn bị để copy vào `data/raw/data/`
+
+### 0.2 Đặt data vào đúng thư mục
+
+Layout đúng:
 
 ```
 data/raw/
@@ -86,7 +122,7 @@ data/raw/
 └── routes_clean.json              ← tên tuyến (tùy chọn, có sẵn trong repo)
 ```
 
-Nếu có file nén (ví dụ `hcmut-gps.zip`):
+### 0.3 Nếu bạn có file nén (ví dụ `hcmut-gps.zip`)
 
 ```bash
 mkdir -p data/raw/data
@@ -95,6 +131,18 @@ mv data/raw/part1/part1/*.json data/raw/data/ 2>/dev/null
 mv data/raw/part2/part2/*.json data/raw/data/ 2>/dev/null
 rm -rf data/raw/part1 data/raw/part2
 ```
+
+### 0.4 Kiểm tra data đã đặt đúng chưa
+
+```bash
+# đếm số file JSON đầu vào
+ls data/raw/data/*.json | wc -l
+
+# xem thử 3 file đầu
+ls data/raw/data/*.json | sed -n '1,3p'
+```
+
+Nếu số file > 0 là OK để chạy pipeline.
 
 ### Bước 1 — Khởi động hệ thống (core services)
 
@@ -199,6 +247,19 @@ docker compose --profile simulate down
 
 # Dừng + xóa toàn bộ data ES
 docker compose --profile simulate down -v
+```
+
+## Restart nhanh khi đã setup xong
+
+Khi đã tạo index + saved objects từ trước và không đổi code setup:
+
+```bash
+# bật lại core + simulator
+docker compose up -d
+docker compose --profile simulate up -d simulator
+
+# kiểm tra có dữ liệu tiếp tục vào ES
+curl -s http://localhost:9200/bus_waypoints/_count
 ```
 
 ## Cấu trúc thư mục
