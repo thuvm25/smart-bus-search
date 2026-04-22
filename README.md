@@ -1,99 +1,69 @@
-# Smart Bus GPS — Real-time Streaming Pipeline
+# Smart Bus GPS Search
 
-Hệ thống giả lập streaming dữ liệu GPS xe buýt TP.HCM qua pipeline:
+Hệ thống giả lập streaming dữ liệu GPS xe buýt TP.HCM qua pipeline đầy đủ từ nguồn đến giao diện:
 
 ```
-Data (JSON) → Simulator → Kafka → Logstash → Elasticsearch → Kibana
+Data (JSON) → Simulator → Kafka → Logstash → Elasticsearch → FastAPI → Streamlit UI
+                                                                  └──────→ Kibana
 ```
 
-Dữ liệu gốc là historical data (JSON files), được simulate thành real-time streaming để demo hệ thống.
+Dữ liệu gốc là historical data (~104M GPS records), được simulate thành real-time streaming và hiển thị trên 2 lớp frontend: Kibana (analytics) và Streamlit (custom dashboard).
 
 ## Chạy nhanh (TL;DR)
 
-Chạy từ thư mục gốc repo:
-
 ```bash
-# 1) Core stack
-docker compose up -d --build
+# 1) Khởi động toàn bộ stack
+docker compose --profile simulate up -d --build
 
-# 2) Setup index + Kibana objects
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r scripts/requirements.txt
-python scripts/create_index.py
+# 2) Setup index + Kibana (chỉ chạy 1 lần duy nhất, sau khi ES healthy)
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+python scripts/create_index.py 
 python scripts/setup_kibana.py
 python scripts/setup_kibana_map.py
 
-# 3) Start simulator
-docker compose --profile simulate up -d --build simulator
-
-# 4) Verify data
+# Kiểm tra dữ liệu vào ES
 curl -s http://localhost:9200/bus_waypoints/_count
 ```
 
-Mở Kibana tại `http://localhost:5601`, vào dashboard/map:
-- `/app/dashboards#/view/smart-bus-dashboard`
-- `/app/maps/map/smart-bus-live-map`
+> **Lần sau** chỉ cần: `docker compose --profile simulate up -d`  
+> Không cần chạy lại bước 2 trừ khi xoá volume (`docker compose down -v`).
+
+## Các địa chỉ truy cập
+
+| Service | URL | Mô tả |
+|---------|-----|-------|
+| Streamlit UI | http://localhost:8501 | Dashboard tìm kiếm & live map |
+| Backend API | http://localhost:8000/docs | Swagger UI |
+| Kibana | http://localhost:5601 | Analytics & Maps |
+| Elasticsearch | http://localhost:9200 | Storage & search |
 
 ## Kiến trúc
 
 ```
-┌─────────────┐     ┌─────────┐     ┌───────────┐     ┌───────────────┐     ┌────────┐
-│  Simulator   │────▶│  Kafka  │────▶│ Logstash  │────▶│ Elasticsearch │────▶│ Kibana │
-│ (Producer)   │     │ (Broker)│     │  (ETL)    │     │  (Storage)    │     │ (Viz)  │
-└─────────────┘     └─────────┘     └───────────┘     └───────────────┘     └────────┘
-  Đọc JSON trong     Buffer          Parse JSON,       Lưu trữ &           Dashboard
-  data/raw/data/,   messages        add @timestamp,   index data           (query ES)
-  shift timestamp,                 build geo_point,
-  gửi batch vào                    đẩy vào ES
-  topic bus-gps-raw
+┌───────────┐    ┌─────────┐    ┌──────────┐    ┌───────────────┐
+│ Simulator │───▶│  Kafka  │───▶│ Logstash │───▶│ Elasticsearch │
+│(Producer) │    │(Broker) │    │  (ETL)   │    │  (Storage)    │
+└───────────┘    └─────────┘    └──────────┘    └───────┬───────┘
+  Đọc JSON,        Buffer        Parse JSON,             │
+  enrich route,    topic:        geo_point,              ├──────▶ Kibana :5601
+  shift timestamp  bus-gps-raw   @timestamp              │        Dashboard + Maps
+  → batch Kafka                  → index ES              │
+                                                         └──────▶ FastAPI :8000
+                                                                  /api/livebus
+                                                                  /api/fuzzysearch
+                                                                       │
+                                                                       ▼
+                                                                  Streamlit :8501
+                                                                  Live map + Route search
 ```
 
 ## Yêu cầu
 
-- **Docker Desktop** (bao gồm Docker Compose)
-- **Python 3.9+** (chỉ để chạy scripts setup: tạo index, setup Kibana)
-- RAM tối thiểu: **6 GB** (Zookeeper + Kafka + ES + Logstash + Kibana)
+- **Docker Desktop** ≥ 4.x (cấp ít nhất **6 GB RAM** trong Docker Desktop Settings)
+- **Python 3.9+** (chỉ dùng cho scripts setup một lần)
 
-### Chạy từ đầu đến Kibana — build lại Docker từ đầu
-
-Dùng khi muốn **dừng hết stack**, **xóa volume Elasticsearch** (mất dữ liệu index cũ), **build lại image không dùng cache**, rồi chạy lại toàn bộ. Thực hiện **từ thư mục gốc repo** (đã `git clone` và `cd` vào đó).
-
-```bash
-# 0) Dừng simulator (nếu có) + core, xóa volume ES
-docker compose --profile simulate down -v
-
-# 1) (Tuỳ chọn) Giải nén dataset — bỏ qua nếu data/raw/data/ đã có file *.json
-# mkdir -p data/raw/data
-# unzip -o hcmut-gps.zip "part1/*" "part2/*" -d data/raw
-# mv data/raw/part1/part1/*.json data/raw/data/ 2>/dev/null
-# mv data/raw/part2/part2/*.json data/raw/data/ 2>/dev/null
-# rm -rf data/raw/part1 data/raw/part2
-
-# 2) Build lại toàn bộ image + bật Zookeeper, Kafka, ES, Logstash, Kibana
-docker compose build --no-cache
-docker compose up -d
-
-# 3) Đợi ~1–2 phút (ES/Kafka healthy). Tạo index + saved objects Kibana
-python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r scripts/requirements.txt
-python scripts/create_index.py
-python scripts/setup_kibana.py
-python scripts/setup_kibana_map.py
-
-# 4) Build lại image simulator + chạy nền
-docker compose --profile simulate build --no-cache simulator
-docker compose --profile simulate up simulator -d
-
-# 5) Kiểm tra + mở Kibana
-curl -s http://localhost:9200/bus_waypoints/_count
-# http://localhost:5601  →  dashboard / map (xem bước 4 phía dưới)
-```
-
-> **Không** cần `--no-cache` mỗi lần chỉnh code nhỏ: khi đó thường chỉ `docker compose up --build -d` là đủ. `--no-cache` dùng khi muốn build sạch hoàn toàn (Dockerfile / base image đổi mạnh).
-
-## Hướng dẫn nhanh
+## Hướng dẫn cài đặt
 
 ### Bước 0 — Clone & chuẩn bị data
 
@@ -102,27 +72,18 @@ git clone <repo-url>
 cd smart-bus-search
 ```
 
-### 0.1 Lấy data về máy
-
-Bạn cần có bộ JSON GPS của nhóm (ví dụ file nén `hcmut-gps.zip` hoặc thư mục JSON đã giải nén sẵn).
-
-- Nếu có file nén: copy file nén vào thư mục gốc repo `smart-bus-search/`
-- Nếu đã có sẵn các file JSON: chuẩn bị để copy vào `data/raw/data/`
-
-### 0.2 Đặt data vào đúng thư mục
-
-Layout đúng:
+Đặt các file GPS JSON vào đúng layout:
 
 ```
 data/raw/
-├── data/                          ← các file sub_raw_*.json đặt vào đây
+├── data/                          ← sub_raw_*.json đặt vào đây
 │   ├── sub_raw_1.json
 │   └── ...
-├── vehicle_route_mapping.json     ← enrich xe → tuyến (tùy chọn, có sẵn trong repo)
-└── routes_clean.json              ← tên tuyến (tùy chọn, có sẵn trong repo)
+├── vehicle_route_mapping.json     ← có sẵn trong repo
+└── routes_clean.json              ← có sẵn trong repo
 ```
 
-### 0.3 Nếu bạn có file nén (ví dụ `hcmut-gps.zip`)
+Nếu có file nén `hcmut-gps.zip`:
 
 ```bash
 mkdir -p data/raw/data
@@ -132,106 +93,62 @@ mv data/raw/part2/part2/*.json data/raw/data/ 2>/dev/null
 rm -rf data/raw/part1 data/raw/part2
 ```
 
-### 0.4 Kiểm tra data đã đặt đúng chưa
+### Bước 1 — Khởi động toàn bộ stack
 
 ```bash
-# đếm số file JSON đầu vào
-ls data/raw/data/*.json | wc -l
-
-# xem thử 3 file đầu
-ls data/raw/data/*.json | sed -n '1,3p'
+docker compose --profile simulate up -d --build
 ```
 
-Nếu số file > 0 là OK để chạy pipeline.
-
-### Bước 1 — Khởi động hệ thống (core services)
-
-```bash
-docker compose up --build -d
-```
-
-Đợi ~1–2 phút để services healthy.
-
-| Service | URL / port | Mô tả |
-|---------|------------|--------|
-| Zookeeper | localhost:2181 | Điều phối Kafka |
-| Kafka | localhost:29092 | Message broker |
-| Elasticsearch | http://localhost:9200 | Storage & search |
-| Kibana | http://localhost:5601 | Giao diện dashboard |
-| Logstash | (internal) | Kafka → ES pipeline |
+Đợi ~1–2 phút để tất cả services healthy. Tất cả services (Kafka, Elasticsearch, Kibana, Logstash, Simulator, FastAPI, Streamlit) đều chạy trong Docker.
 
 ### Bước 2 — Tạo index ES & saved objects Kibana
 
-Chạy **từ thư mục gốc repo**:
+Chạy **một lần duy nhất** sau khi Elasticsearch healthy:
 
 ```bash
 python3 -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r scripts/requirements.txt
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 
-python scripts/create_index.py      # tạo index bus_waypoints + mapping geo_point
+python scripts/create_index.py      # tạo index bus_waypoints + geo_point mapping
 python scripts/setup_kibana.py      # Data View + Dashboard + visualizations
-python scripts/setup_kibana_map.py  # Map saved object (live map + heatmap)
+python scripts/setup_kibana_map.py  # Kibana Maps (live map + heatmap)
 ```
 
-> Cần Elasticsearch và Kibana đang chạy (Bước 1). Chỉ cần chạy **một lần**.
+### Bước 3 — Truy cập
 
-### Bước 3 — Chạy Simulator (giả lập → Kafka)
-
-```bash
-# Chạy nền
-docker compose --profile simulate up simulator --build -d
-
-# Hoặc chạy foreground xem log trực tiếp
-docker compose --profile simulate up simulator --build
-```
-
-Simulator sẽ:
-- Đọc `data/raw/data/*.json` và enrich tuyến xe
-- Shift timestamp về "bây giờ" để Kibana hiển thị như real-time
-- Gửi theo batch vào Kafka topic `bus-gps-raw` (mặc định 50 bản ghi/batch, cách nhau 200ms)
-- Logstash tự động consume và đẩy vào Elasticsearch
-
-### Bước 4 — Xem Dashboard trên Kibana
-
-Truy cập http://localhost:5601
-
-| Đường dẫn | Nội dung |
-|-----------|----------|
-| `/app/dashboards#/view/smart-bus-dashboard` | Dashboard tổng hợp |
-| `/app/maps/map/smart-bus-live-map` | Bản đồ GPS live + heatmap |
-
-Kiểm tra dữ liệu đang vào ES:
-
-```bash
-curl -s http://localhost:9200/bus_waypoints/_count
-```
-
-`count > 0` → chuỗi Simulator → Kafka → Logstash → ES đang chạy.
+| Địa chỉ | Nội dung |
+|---------|----------|
+| http://localhost:8501 | Streamlit — live map + tìm kiếm tuyến xe |
+| http://localhost:8000/docs | FastAPI — Swagger UI |
+| http://localhost:5601/app/dashboards#/view/smart-bus-dashboard | Kibana Dashboard |
+| http://localhost:5601/app/maps/map/smart-bus-live-map | Kibana Maps live |
 
 ## Kiểm tra từng chặng
 
 ```bash
-# Simulator đang phát không?
+# ES có dữ liệu?
+curl -s http://localhost:9200/bus_waypoints/_count
+
+# Backend API hoạt động?
+curl -s http://localhost:8000/health
+
+# Simulator đang phát?
 docker logs -f smart-bus-simulator
 
-# Logstash đang consume Kafka và đẩy ES?
+# Logstash đang consume + đẩy ES?
 docker logs -f smart-bus-logstash
-
-# ES có dữ liệu chưa?
-curl -s http://localhost:9200/bus_waypoints/_count
 ```
 
 ## Cấu hình Simulator
 
 | Variable | Default | Mô tả |
-|----------|---------|--------|
-| `DATA_MODE` | `json` | `json` = đọc `data/raw/data/*.json` |
-| `BATCH_SIZE` | `50` | Số records mỗi batch |
+|----------|---------|-------|
+| `BATCH_SIZE` | `50` | Số records mỗi batch gửi Kafka |
 | `DELAY_MS` | `200` | Khoảng cách giữa các batch (ms) |
 | `SPEED_MULTIPLIER` | `1.0` | Hệ số tốc độ phát (2.0 = nhanh gấp đôi) |
-| `LOOP` | `false` | Lặp lại khi hết dữ liệu |
-| `MAX_FILES` | `0` | Giới hạn số file JSON (0 = tất cả) |
+| `LOOP` | `false` | Lặp lại từ đầu khi hết dữ liệu |
+| `MAX_FILES` | `0` | Giới hạn số file JSON xử lý (0 = tất cả) |
 
 Pause / Resume stream:
 
@@ -249,34 +166,27 @@ docker compose --profile simulate down
 docker compose --profile simulate down -v
 ```
 
-## Restart nhanh khi đã setup xong
+## Development — chỉnh code không cần restart Docker
 
-Khi đã tạo index + saved objects từ trước và không đổi code setup:
-
-```bash
-# bật lại core + simulator
-docker compose up -d
-docker compose --profile simulate up -d simulator
-
-# kiểm tra có dữ liệu tiếp tục vào ES
-curl -s http://localhost:9200/bus_waypoints/_count
-```
+- **Backend** (`backend/`): uvicorn chạy với `--reload`, save file là tự restart.
+- **UI** (`ui/`): Streamlit chạy với `--server.runOnSave true`, save file là tự reload.
+- Chỉ cần `--build` lại khi thêm package vào `requirements.txt`.
 
 ## Cấu trúc thư mục
 
 ```
-├── data/
-│   ├── raw/
-│   │   ├── data/                     ← sub_raw_*.json — simulator đọc từ đây
-│   │   ├── vehicle_route_mapping.json
-│   │   └── routes_clean.json
-│   └── processed/                    ← (không dùng trong pipeline JSON)
+├── backend/                          ← FastAPI REST API
+│   ├── Dockerfile
+│   └── app/
+│       ├── main.py                   ← app entry point, CORS, health check
+│       ├── core/es_client.py         ← Elasticsearch client singleton
+│       └── routers/
+│           ├── livebus.py            ← GET /api/livebus (GeoJSON positions)
+│           └── fuzzysearch.py        ← GET /api/fuzzysearch (route search)
 │
-├── scripts/
-│   ├── create_index.py               ← tạo ES index với geo_point mapping
-│   ├── setup_kibana.py               ← Data View + Dashboard + visualizations
-│   ├── setup_kibana_map.py           ← Kibana Maps saved object
-│   └── requirements.txt
+├── ui/
+│   ├── Dockerfile
+│   └── smartsearchbus_web.py         ← Streamlit dashboard
 │
 ├── simulator/
 │   ├── Dockerfile
@@ -285,25 +195,27 @@ curl -s http://localhost:9200/bus_waypoints/_count
 │
 ├── logstash/
 │   ├── config/logstash.yml
-│   └── pipeline/kafka-to-es.conf     ← ETL: Kafka → parse → ES
+│   └── pipeline/kafka-to-es.conf     ← ETL: Kafka → parse → Elasticsearch
+│
+├── scripts/
+│   ├── create_index.py               ← tạo ES index với geo_point mapping
+│   ├── setup_kibana.py               ← Data View + Dashboard + visualizations
+│   └── setup_kibana_map.py           ← Kibana Maps saved object
 │
 ├── kibana/kibana.yml
+├── data/
+│   ├── raw/
+│   │   ├── data/                     ← sub_raw_*.json (simulator đọc từ đây)
+│   │   ├── vehicle_route_mapping.json
+│   │   └── routes_clean.json
+│   └── processed/
+│
+├── requirements.txt                  ← deps cho backend, UI, scripts
 └── docker-compose.yml
 ```
 
-## Xử lý dữ liệu ở đâu?
-
-| Giai đoạn | Thành phần | Việc làm |
-|-----------|------------|----------|
-| Phát dữ liệu | `simulator/simulate_gps.py` | Đọc JSON, enrich tuyến, shift thời gian → Kafka |
-| Hàng đợi | Kafka | Buffer |
-| ETL | `logstash/pipeline/kafka-to-es.conf` | Parse JSON, `@timestamp`, `geo_point` → ES |
-| Lưu & search | Elasticsearch | Index, lưu trữ |
-| Hiển thị | Kibana | Query ES, vẽ chart/map |
-
 ## Lưu ý khi demo
 
-- Timestamp được shift về "bây giờ" → biểu đồ trông như real-time
-- Dashboard Kibana auto-refresh theo cấu hình đã tạo (vài giây)
+- Timestamp được shift về "bây giờ" → biểu đồ Kibana và map trông như real-time
 - Tăng `SPEED_MULTIPLIER` hoặc giảm `DELAY_MS` để demo nhanh hơn
-- Base map dùng OpenStreetMap — không cần Elastic Maps Service
+- Base map dùng OpenStreetMap — không cần Elastic Maps Service license

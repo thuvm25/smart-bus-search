@@ -78,6 +78,41 @@ services:
     environment:
       LS_JAVA_OPTS: "-Xms512m -Xmx512m"
 
+  # ── Backend API ───────────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: smart-bus-backend
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      ES_HOST: http://elasticsearch:9200
+    volumes:
+      - ./backend:/app/backend
+      - ./requirements.txt:/app/requirements.txt:ro
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # ── Frontend UI ────────────────────────────────────────────
+  ui:
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    container_name: smart-bus-ui
+    depends_on:
+      - backend
+    ports:
+      - "8501:8501"
+    environment:
+      API_BASE: http://backend:8000
+    volumes:
+      - ./ui:/app/ui
+      - ./requirements.txt:/app/requirements.txt:ro
+    command: streamlit run /app/ui/smartsearchbus_web.py --server.address 0.0.0.0 --server.runOnSave true
+
   # ── Simulator (Data Producer) ──────────────────────────────
   simulator:
     build: ./simulator
@@ -85,21 +120,8 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      KAFKA_TOPIC: bus-gps-raw
-      # DATA_MODE: json reads data/raw/data/*.json via JSON_DIR (default)
-      # DATA_MODE: csv reads the pre-processed CSV instead
-      DATA_MODE: "json"
-      JSON_DIR: /app/data/raw
-      VEHICLE_MAP: /app/data/raw/vehicle_route_mapping.json
-      ROUTES_FILE: /app/data/raw/routes_clean.json
-      MAX_FILES: "0"          # 0 = all files; set e.g. "5" for a quick demo
-      CSV_PATH: /app/data/processed/bus_gps_clean.csv
-      BATCH_SIZE: "50"
-      DELAY_MS: "200"
-      SPEED_MULTIPLIER: "1.0"
-      LOOP: "false"
+    env_file:
+      - ./.env
     volumes:
       - ./data:/app/data:ro
     profiles:

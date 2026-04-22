@@ -42,9 +42,11 @@ from datetime import datetime, timezone
 from typing import Generator
 
 import pandas as pd
+from dotenv import find_dotenv, load_dotenv
 from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
 
+load_dotenv(find_dotenv())
 
 # ── Configuration ────────────────────────────────────────────────────────────
 DATA_MODE   = os.getenv("DATA_MODE", "json").lower()

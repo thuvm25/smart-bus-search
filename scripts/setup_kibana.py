@@ -566,7 +566,144 @@ def setup_density_map(dv_id):
     return ok
 
 
-# ── 6. Dashboard ──────────────────────────────────────────────────────────────
+# ── 6. Vega: Dynamic Fuzzy Search Bar Chart ───────────────────────────────────
+def setup_vega_fuzzy_search(dv_id):
+    print("\n[6] Vega dynamic fuzzy search chart")
+
+    vega_spec = {
+        "$schema": "https://vega.github.io/schema/vega/v5.json",
+        "autosize": "none",
+        "padding": 5,
+        "width": 500,
+        "height": 300,
+
+        "signals": [
+            {
+                "name": "searchTerm",
+                "value": "",
+                "bind": {
+                    "input": "text",
+                    "placeholder": "Nhập tên tuyến...",
+                    "debounce": 300,
+                },
+            }
+        ],
+
+        "data": [
+            {
+                "name": "routes",
+                "url": {
+                    "%context%": True,
+                    "%timefield%": "@timestamp",
+                    "index": INDEX,
+                    "body": {
+                        "size": 0,
+                        "aggs": {
+                            "all_routes": {
+                                "terms": {
+                                    "field": "route_name.keyword",
+                                    "size": 100,
+                                    "order": {"_count": "desc"},
+                                }
+                            }
+                        },
+                    },
+                },
+                "format": {
+                    "type": "json",
+                    "property": "aggregations.all_routes.buckets",
+                },
+            },
+            {
+                "name": "filtered",
+                "source": "routes",
+                "transform": [
+                    {
+                        "type": "filter",
+                        "expr": "searchTerm === '' || indexof(lower(datum.key), lower(searchTerm)) >= 0",
+                    }
+                ],
+            },
+        ],
+
+        "scales": [
+            {
+                "name": "xScale",
+                "type": "linear",
+                "domain": {"data": "filtered", "field": "doc_count"},
+                "range": "width",
+                "nice": True,
+            },
+            {
+                "name": "yScale",
+                "type": "band",
+                "domain": {
+                    "data": "filtered",
+                    "field": "key",
+                    "sort": {"field": "doc_count", "order": "descending"},
+                },
+                "range": "height",
+                "padding": 0.2,
+            },
+            {
+                "name": "colorScale",
+                "type": "linear",
+                "domain": {"data": "filtered", "field": "doc_count"},
+                "range": {"scheme": "blues"},
+            },
+        ],
+
+        "axes": [
+            {"orient": "bottom", "scale": "xScale", "title": "Số điểm GPS"},
+            {"orient": "left", "scale": "yScale", "title": "Tên tuyến"},
+        ],
+
+        "marks": [
+            {
+                "type": "rect",
+                "from": {"data": "filtered"},
+                "encode": {
+                    "enter": {
+                        "y": {"scale": "yScale", "field": "key"},
+                        "height": {"scale": "yScale", "band": 1},
+                        "x": {"scale": "xScale", "value": 0},
+                        "x2": {"scale": "xScale", "field": "doc_count"},
+                        "fill": {"scale": "colorScale", "field": "doc_count"},
+                        "tooltip": {
+                            "signal": "{'Tuyến': datum.key, 'Số điểm GPS': datum.doc_count}"
+                        },
+                    }
+                },
+            }
+        ],
+    }
+
+    vis_state = json.dumps({
+        "type": "vega",
+        "aggs": [],
+        "params": {"spec": json.dumps(vega_spec, ensure_ascii=False, indent=2)},
+    })
+
+    create("visualization", "vega-fuzzy-routes", {
+        "title": "🔍 Fuzzy Search Tuyến Xe (Vega)",
+        "visState": vis_state,
+        "uiStateJSON": "{}",
+        "description": "Dynamic fuzzy search — gõ tên tuyến vào ô input, chart tự update",
+        "kibanaSavedObjectMeta": {
+            "searchSourceJSON": json.dumps({
+                "query": {"language": "kuery", "query": ""},
+                "filter": [],
+                "indexRefName": "kibanaSavedObjectMeta.searchSourceJSON.index",
+            })
+        },
+    }, references=[
+        {"id": dv_id,
+         "name": "kibanaSavedObjectMeta.searchSourceJSON.index",
+         "type": "index-pattern"},
+    ])
+
+
+# ── 7. Dashboard ──────────────────────────────────────────────────────────────
 def setup_dashboard():
     print("\n[6] Dashboard")
     create("dashboard", "smart-bus-dashboard", {
@@ -585,6 +722,8 @@ def setup_dashboard():
             {"version": "8.15.0", "type": "map",           "gridData": {"x": 0,  "y": 32, "w": 48, "h": 20, "i": "p8"}, "panelIndex": "p8", "embeddableConfig": {"enhancements": {}}, "panelRefName": "panel_p8"},
             # Row 4: trajectory table
             {"version": "8.15.0", "type": "lens",          "gridData": {"x": 0,  "y": 52, "w": 48, "h": 16, "i": "p7"}, "panelIndex": "p7", "embeddableConfig": {"enhancements": {}}, "panelRefName": "panel_p7"},
+            # Row 5: vega dynamic fuzzy search
+            {"version": "8.15.0", "type": "visualization", "gridData": {"x": 0,  "y": 68, "w": 48, "h": 16, "i": "p9"}, "panelIndex": "p9", "embeddableConfig": {"enhancements": {}}, "panelRefName": "panel_p9"},
         ]),
         "optionsJSON": json.dumps({
             "useMargins": True, "syncColors": False,
@@ -608,6 +747,7 @@ def setup_dashboard():
         {"id": "bus-top-routes",       "name": "panel_p6", "type": "lens"},
         {"id": "bus-density-heatmap",  "name": "panel_p8", "type": "map"},
         {"id": "bus-trajectory-table", "name": "panel_p7", "type": "lens"},
+        {"id": "vega-fuzzy-routes",    "name": "panel_p9", "type": "visualization"},
     ])
 
 
@@ -625,6 +765,7 @@ def main():
     setup_lens(dv_id)
     setup_live_map(dv_id)
     setup_density_map(dv_id)
+    setup_vega_fuzzy_search(dv_id)
     setup_dashboard()
 
     print("\n" + "=" * 55)
