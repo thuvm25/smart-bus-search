@@ -63,6 +63,23 @@ services:
     volumes:
       - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
 
+  # ── Index Initializer (runs once, must finish before Logstash) ──
+  init-index:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: smart-bus-init-index
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      ES_HOST: http://elasticsearch:9200
+      ES_INDEX: bus_waypoints
+    volumes:
+      - ./scripts:/app/scripts:ro
+    command: python scripts/create_index.py
+    restart: "no"
+
   # ── ETL: Kafka → Elasticsearch ─────────────────────────────
   logstash:
     image: docker.elastic.co/logstash/logstash:8.15.0
@@ -72,6 +89,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      init-index:
+        condition: service_completed_successfully
     volumes:
       - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
       - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
