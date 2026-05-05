@@ -13,7 +13,7 @@ Docs:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import fuzzysearch, livebus
+from .routers import fuzzysearch, livebus, platesearch, routedetail
 from .core.es_client import get_es, get_index, ES_HOST
 
 app = FastAPI(
@@ -37,8 +37,10 @@ app.add_middleware(
 )
 
 # ── Routers ────────────────────────────────────────────────────────────────────
-app.include_router(livebus.router,  prefix="/api", tags=["LiveBus"])
+app.include_router(livebus.router,     prefix="/api", tags=["LiveBus"])
 app.include_router(fuzzysearch.router, prefix="/api", tags=["FuzzySearch"])
+app.include_router(platesearch.router,  prefix="/api", tags=["PlateSearch"])
+app.include_router(routedetail.router,  prefix="/api", tags=["RouteDetail"])
 
 
 # ── Health ─────────────────────────────────────────────────────────────────────

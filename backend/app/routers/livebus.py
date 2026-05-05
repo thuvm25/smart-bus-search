@@ -17,6 +17,7 @@ def get_positions(
     to: str = Query(default="now"),
     max_vehicles: int = Query(default=200, ge=1, le=2000),
     route_no: str = Query(default=""),
+    plate_no: str = Query(default=""),
 ):
     es = get_es()
     index = get_index()
@@ -24,6 +25,8 @@ def get_positions(
     filters = [{"range": {"@timestamp": {"gte": from_, "lte": to}}}]
     if route_no:
         filters.append({"term": {"route_no": route_no}})
+    if plate_no:
+        filters.append({"term": {"plate_no": plate_no}})
 
     body = {
         "size": 0,
@@ -43,7 +46,7 @@ def get_positions(
                             "sort": [{"@timestamp": {"order": "desc"}}],
                             "_source": [
                                 "vehicle", "lat", "lon", "speed", "heading",
-                                "route_no", "route_name", "@timestamp",
+                                "route_no", "route_name", "plate_no", "@timestamp",
                                 "ignition", "aircon",
                             ],
                         }
@@ -79,6 +82,7 @@ def get_positions(
                 "heading":    src.get("heading", 0),
                 "route_no":   src.get("route_no", ""),
                 "route_name": src.get("route_name", ""),
+                "plate_no":   src.get("plate_no", ""),
                 "timestamp":  src.get("@timestamp", ""),
                 "ignition":   src.get("ignition", False),
                 "aircon":     src.get("aircon", False),

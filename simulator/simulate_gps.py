@@ -141,6 +141,8 @@ def build_enrichment() -> dict[str, dict]:
         }
         if route_no in route_name_lookup:
             entry["route_name"] = route_name_lookup[route_no]
+        if info.get("plate_no"):
+            entry["plate_no"] = info["plate_no"]
         enrichment[vehicle_hash] = entry
 
     matched = sum(1 for e in enrichment.values() if "route_name" in e)

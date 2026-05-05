@@ -51,11 +51,9 @@ BUS_WAYPOINT_MAPPING = {
             "door_up":   {"type": "boolean"},
             "door_down": {"type": "boolean"},
             # ── Route enrichment ─────────────────────────────────
-            # route_id: numeric ID from vehicle_route_mapping.json (stored as keyword
-            #           to avoid accidental range queries on an opaque ID)
             "route_id":  {"type": "keyword"},
-            # route_no: short code, e.g. "01", "163V" — used for aggregations/filters
             "route_no":  {"type": "keyword"},
+            "plate_no":  {"type": "keyword"},
             # route_name: human-readable, e.g. "Bến Thành - Suối Tiên"
             #   text  → full-text search
             #   .keyword → exact-match aggregations / Kibana filter-by-value
