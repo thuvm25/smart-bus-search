@@ -42,9 +42,11 @@ from datetime import datetime, timezone
 from typing import Generator
 
 import pandas as pd
+from dotenv import find_dotenv, load_dotenv
 from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
 
+load_dotenv(find_dotenv())
 
 # ── Configuration ────────────────────────────────────────────────────────────
 DATA_MODE   = os.getenv("DATA_MODE", "json").lower()
@@ -139,6 +141,8 @@ def build_enrichment() -> dict[str, dict]:
         }
         if route_no in route_name_lookup:
             entry["route_name"] = route_name_lookup[route_no]
+        if info.get("plate_no"):
+            entry["plate_no"] = info["plate_no"]
         enrichment[vehicle_hash] = entry
 
     matched = sum(1 for e in enrichment.values() if "route_name" in e)

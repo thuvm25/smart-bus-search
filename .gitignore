@@ -4,7 +4,8 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
-
+*.md
+!README.md
 # Data (too large for git)
 data/raw/*.csv
 data/raw/*.json
