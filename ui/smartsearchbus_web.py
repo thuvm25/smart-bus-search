@@ -363,7 +363,7 @@ with tab_live:
 # TAB 2 — STATS (Aggregation) → /api/stats
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_stats:
-    st.markdown('<div class="section-header">📊 Aggregation — Phân tích thống kê (mục 3.3)</div>',
+    st.markdown('<div class="section-header">📊 Aggregation </div>',
                 unsafe_allow_html=True)
 
     col_a, col_b = st.columns([1, 1])
@@ -484,7 +484,7 @@ with tab_stats:
 # TAB 3 — FILTER EXPLORER → /api/filter
 # ══════════════════════════════════════════════════════════════════════════════
 with tab_filter:
-    st.markdown('<div class="section-header">🔎 Filter Explorer — bool.filter đa-clause (mục 3.4)</div>',
+    st.markdown('<div class="section-header">🔎 Filter Explorer </div>',
                 unsafe_allow_html=True)
 
     with st.form("filter_form"):
