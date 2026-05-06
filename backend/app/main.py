@@ -13,7 +13,7 @@ Docs:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import fuzzysearch, livebus, platesearch, routedetail
+from .routers import fuzzysearch, livebus, platesearch, routedetail, stats, filterbus
 from .core.es_client import get_es, get_index, ES_HOST
 
 app = FastAPI(
@@ -39,8 +39,10 @@ app.add_middleware(
 # ── Routers ────────────────────────────────────────────────────────────────────
 app.include_router(livebus.router,     prefix="/api", tags=["LiveBus"])
 app.include_router(fuzzysearch.router, prefix="/api", tags=["FuzzySearch"])
-app.include_router(platesearch.router,  prefix="/api", tags=["PlateSearch"])
-app.include_router(routedetail.router,  prefix="/api", tags=["RouteDetail"])
+app.include_router(platesearch.router, prefix="/api", tags=["PlateSearch"])
+app.include_router(routedetail.router, prefix="/api", tags=["RouteDetail"])
+app.include_router(stats.router,       prefix="/api", tags=["Stats (Aggregation)"])
+app.include_router(filterbus.router,   prefix="/api", tags=["Filter"])
 
 
 # ── Health ─────────────────────────────────────────────────────────────────────
@@ -76,7 +78,11 @@ def root():
         "docs": "/docs",
         "health": "/health",
         "endpoints": [
-            "/api/fuzzysearch",
             "/api/livebus",
+            "/api/fuzzysearch",
+            "/api/platesearch",
+            "/api/routedetail",
+            "/api/stats",
+            "/api/filter",
         ],
     }
