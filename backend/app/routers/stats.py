@@ -46,13 +46,33 @@ def get_stats(
                           description="Bước cho date_histogram (1m, 5m, 1h)."),
     precision: int = Query(default=11, ge=0, le=15,
                            description="Precision cho geotile_grid (0–15, ~11–13 cho TP.HCM)."),
+    # ── filter params (đồng bộ với /api/livebus) ───────────────────────────
+    route_no:  str = Query(default=""),
+    plate_no:  str = Query(default=""),
+    ignition:  str = Query(default="", description="'true'/'false'/''"),
+    speed_gte: float | None = Query(default=None, ge=0, le=200),
+    speed_lt:  float | None = Query(default=None, ge=0, le=200),
 ):
     es = get_es()
     index = get_index()
 
-    # Mọi metric đều áp time range trong filter context.
-    base_filter = [{"range": {"@timestamp": {"gte": from_, "lte": to}}}]
-    base_query  = {"bool": {"filter": base_filter}}
+    # Mọi metric đều áp time range + các filter dimension khác trong filter context.
+    base_filter: list = [{"range": {"@timestamp": {"gte": from_, "lte": to}}}]
+    if route_no:
+        base_filter.append({"term": {"route_no": route_no}})
+    if plate_no:
+        base_filter.append({"term": {"plate_no": plate_no}})
+    if ignition.lower() in ("true", "false"):
+        base_filter.append({"term": {"ignition": ignition.lower() == "true"}})
+    if speed_gte is not None or speed_lt is not None:
+        rng: dict = {}
+        if speed_gte is not None:
+            rng["gte"] = speed_gte
+        if speed_lt is not None:
+            rng["lt"] = speed_lt
+        base_filter.append({"range": {"speed": rng}})
+
+    base_query = {"bool": {"filter": base_filter}}
 
     # ── 1. Top routes by ping count + avg/max speed ────────────────────────────
     if metric == "top_routes":
