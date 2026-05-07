@@ -7,15 +7,23 @@ router = APIRouter()
 @router.get("/platesearch")
 def search_plates(
     route_no: str = Query(default=""),
-    size: int = Query(default=200, ge=1, le=500),
+    from_:   str = Query(default="now-1h", alias="from"),
+    to:      str = Query(default="now"),
+    size:    int = Query(default=200, ge=1, le=500),
 ):
+    """
+    Liệt kê biển số xe duy nhất trong cửa sổ thời gian, có thể lọc theo
+    tuyến. Time range mặc định là `now-1h..now` để tránh quét toàn bộ
+    index — terms aggregation trên `plate_no` không có time filter sẽ
+    timeout khi index lớn (~30M+ doc).
+    """
     es = get_es()
     index = get_index()
 
-    filters = []
+    filters = [{"range": {"@timestamp": {"gte": from_, "lte": to}}}]
     if route_no.strip():
         filters.append({"term": {"route_no": route_no.strip()}})
-    query = {"bool": {"filter": filters}} if filters else {"match_all": {}}
+    query = {"bool": {"filter": filters}}
 
     body = {
         "size": 0,
