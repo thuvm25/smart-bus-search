@@ -85,4 +85,8 @@ def root():
             "/api/stats",
             "/api/filter",
         ],
+        "stats_metrics": [
+            "top_routes", "top_jam_routes", "traffic_jam",
+            "pings_per_min", "vehicles_active", "speed_by_hour",
+        ],
     }
