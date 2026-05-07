@@ -4,10 +4,9 @@ Hệ thống giả lập streaming dữ liệu GPS xe buýt TP.HCM qua pipeline 
 
 ```
 Data (JSON) → Simulator → Kafka → Logstash → Elasticsearch → FastAPI → Streamlit UI
-                                                                  └──────→ Kibana
 ```
 
-Dữ liệu gốc là dữ liệu lịch sử (~104 triệu bản ghi GPS), được giả lập thành luồng dữ liệu thời gian thực và hiển thị trên 2 lớp giao diện: Kibana (phân tích) và Streamlit (bảng điều khiển tùy chỉnh).
+Dữ liệu gốc là dữ liệu lịch sử (~104 triệu bản ghi GPS), được giả lập thành luồng dữ liệu thời gian thực và hiển thị trên giao diện Streamlit.
 
 ## Kiến trúc
 
@@ -17,14 +16,11 @@ Dữ liệu gốc là dữ liệu lịch sử (~104 triệu bản ghi GPS), đư
 │(Producer) │    │(Broker) │    │  (ETL)   │    │  (Storage)    │
 └───────────┘    └─────────┘    └──────────┘    └───────┬───────┘
   Đọc JSON,        Bộ đệm        Phân tích JSON,         │
-  làm giàu dữ liệu topic:        geo_point,              ├──────▶ Kibana :5601
-  tuyến đường,     bus-gps-raw   @timestamp              │        Dashboard + Maps
-  dịch chuyển                    → index ES              │
-  thời gian                                              └──────▶ FastAPI :8000
-  → gửi Kafka                                                     /api/livebus
-                                                                  /api/fuzzysearch
-                                                                       │
-                                                                       ▼
+  làm giàu dữ liệu topic:        geo_point,              └──────▶ FastAPI :8000
+  tuyến đường,     bus-gps-raw   @timestamp                       /api/livebus
+  dịch chuyển                    → index ES                       /api/fuzzysearch
+  thời gian                                                            │
+  → gửi Kafka                                                          ▼
                                                                   Streamlit :8501
                                                                   Bản đồ trực tiếp + Tìm kiếm tuyến
 ```
@@ -32,7 +28,6 @@ Dữ liệu gốc là dữ liệu lịch sử (~104 triệu bản ghi GPS), đư
 ## Yêu cầu hệ thống
 
 - **Docker Desktop** ≥ 4.x (cấp ít nhất **6 GB RAM** trong phần cài đặt Docker Desktop)
-- **Python 3.9+** (chỉ cần để chạy Kibana setup scripts)
 
 ---
 
@@ -81,27 +76,12 @@ Docker sẽ tự động khởi động các dịch vụ theo đúng thứ tự:
 
 Đợi khoảng 1–2 phút để tất cả các dịch vụ ở trạng thái sẵn sàng.
 
-### Bước 2 — (Tùy chọn) Thiết lập Kibana Dashboard & Maps
-
-Chạy **một lần duy nhất** nếu bạn muốn sử dụng Kibana:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-
-python scripts/setup_kibana.py      # Tạo Data View + Dashboard + các biểu đồ
-python scripts/setup_kibana_map.py  # Thiết lập Kibana Maps (bản đồ trực tiếp + heatmap)
-```
-
-### Bước 3 — Truy cập các địa chỉ
+### Bước 2 — Truy cập các địa chỉ
 
 | Địa chỉ | Nội dung |
 |---------|----------|
 | http://localhost:8501 | Streamlit — Bản đồ trực tiếp + Tìm kiếm tuyến xe |
 | http://localhost:8000/docs | FastAPI — Swagger UI |
-| http://localhost:5601/app/dashboards#/view/smart-bus-dashboard | Kibana Dashboard |
-| http://localhost:5601/app/maps/map/smart-bus-live-map | Kibana Maps trực tiếp |
 
 ---
 
@@ -199,11 +179,8 @@ docker compose --profile simulate up -d --build
 │   └── pipeline/kafka-to-es.conf     ← ETL: Kafka → xử lý → Elasticsearch
 │
 ├── scripts/
-│   ├── create_index.py               ← Tạo index ES với mapping geo_point (chạy tự động qua Docker)
-│   ├── setup_kibana.py               ← Thiết lập Data View, Dashboard & Biểu đồ (chạy tay 1 lần)
-│   └── setup_kibana_map.py           ← Thiết lập Kibana Maps (chạy tay 1 lần)
+│   └── create_index.py               ← Tạo index ES với mapping geo_point (chạy tự động qua Docker)
 │
-├── kibana/kibana.yml
 ├── data/
 │   └── raw/
 │       ├── data/                     ← sub_raw_*.json (dữ liệu nguồn)
@@ -217,6 +194,6 @@ docker compose --profile simulate up -d --build
 
 ## Lưu ý khi demo
 
-- Timestamp được dịch chuyển về "hiện tại" → biểu đồ Kibana và bản đồ Streamlit hiển thị như dữ liệu thời gian thực.
+- Timestamp được dịch chuyển về "hiện tại" → bản đồ Streamlit hiển thị như dữ liệu thời gian thực.
 - Tăng `SPEED_MULTIPLIER` hoặc giảm `DELAY_MS` trong `.env` để dữ liệu phát nhanh hơn.
 - Bản đồ nền dùng OpenStreetMap — không yêu cầu bản quyền Elastic Maps Service.
