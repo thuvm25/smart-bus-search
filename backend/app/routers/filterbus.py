@@ -1,16 +1,10 @@
 """
-GET /api/filter — Lọc bản ghi GPS theo nhiều thuộc tính (Filtering pure).
+GET /api/filter — Lọc bản ghi GPS theo nhiều thuộc tính.
 
-Mục tiêu: minh hoạ pattern bool.filter của Elasticsearch — kết hợp nhiều
-mệnh đề term / range trong filter context (không tính _score, có cache).
-
-Tham khảo "Elasticsearch: The Definitive Guide" chương 12 + 30:
-  - filter context vs query context
-  - bool.filter cho phép intersect bitset của nhiều clause
-  - geo_bounding_box thuộc filter context, hoạt động cùng các filter khác
-
-Endpoint trả về document raw (paginated) — không phải aggregation,
-phục vụ trực quan hoá Discover-like.
+Kết hợp nhiều mệnh đề term / range / geo_bounding_box trong bool.filter
+context (không tính _score, có cache). Trả về raw documents có pagination,
+phục vụ Discover-like UI — đối ngược với /api/livebus gom 1-per-vehicle
+qua terms+top_hits.
 """
 
 from fastapi import APIRouter, Query

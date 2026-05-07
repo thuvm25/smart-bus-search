@@ -155,6 +155,19 @@ def speed_color(speed: float) -> List[int]:
     return [255, int(200 * (1 - 2 * (pct - 0.5))), 0, 220]
 
 
+def chart_label(title: str, help_text: str, took_ms: int = 0) -> None:
+    """Render chart label dùng st.markdown(help=...) để có (?) icon
+    + tooltip Streamlit native — giống hệt st.metric."""
+    took_suffix = (f" <span style='color:#64748b; font-weight:400; "
+                   f"font-size:0.85em; margin-left:8px'>"
+                   f"took {took_ms} ms</span>") if took_ms else ""
+    st.markdown(
+        f"**{title}**{took_suffix}",
+        unsafe_allow_html=True,
+        help=help_text,
+    )
+
+
 def render_route_card(route: Dict) -> None:
     """Render route detail dạng card đơn giản."""
     rows = [
@@ -189,7 +202,7 @@ DEFAULTS = {
     "selected_route_no":   "",
     "selected_route_name": "",
     "selected_plate_no":   "",
-    # Bộ lọc nâng cao (mục 3.4 — bool.filter đa-clause)
+    # Bộ lọc nâng cao — feed thẳng vào bool.filter của /api/livebus + /api/stats
     "filter_window":       "now-1h",
     "filter_ignition":     "—",
     "filter_speed_min":    0,
@@ -421,7 +434,6 @@ with col_map:
             st.info("Không có dữ liệu vị trí xe khớp bộ lọc.")
             return
 
-        # KPI nhỏ phía trên map — minh hoạ tốc độ filter context
         clauses = pos_data.get("filter_clauses_count", 0)
         took    = pos_data.get("took", 0)
         count   = pos_data.get("count", len(pos_data["features"]))
@@ -574,20 +586,52 @@ def render_stats():
     last_refresh = pd.Timestamp.now().strftime("%H:%M:%S")
     st.caption(f"🕐 Cập nhật lần cuối: **{last_refresh}** · {_filter_summary()}")
 
-    # KPI row — vehicles_active
+    # ── Hàng KPI 1: tổng quan vận hành ─────────────────────────────────────
     kpi_data = api_get("/api/stats", {**base_params, "metric": "vehicles_active"})
+    jam_data = api_get("/api/stats", {**base_params, "metric": "traffic_jam"})
+
     if kpi_data and kpi_data.get("data"):
         d = kpi_data["data"]
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Xe đang hoạt động", f"{d['vehicles_active']:,}")
-        c2.metric("Tuyến đang chạy",   f"{d['routes_in_use']:,}")
-        c3.metric("Tổng ping",         f"{d['total_pings']:,}")
-        c4.metric("Took",              f"{kpi_data.get('took', 0)} ms")
+        c1.metric(
+            "Xe đang hoạt động",
+            f"{d['vehicles_active']:,}",
+            help="Số xe DUY NHẤT có ít nhất 1 bản ghi GPS trong cửa sổ. "
+                 "Aggregation: cardinality(vehicle).",
+        )
+        c2.metric(
+            "Tuyến đang chạy",
+            f"{d['routes_in_use']:,}",
+            help="Số tuyến DUY NHẤT có xe vận hành trong cửa sổ. "
+                 "Aggregation: cardinality(route_no).",
+        )
+        if jam_data and jam_data.get("data"):
+            c3.metric(
+                "Tỷ lệ kẹt xe",
+                f"{jam_data['data']['jam_pct']}%",
+                help="% bản tin GPS có vận tốc < 5 km/h trong cửa sổ. "
+                     "Đại diện cho mức độ ùn tắc + dừng đèn đỏ + dừng "
+                     "trạm. Aggregation: range(speed) chia 4 nhóm "
+                     "jam/slow/normal/fast rồi lấy tỷ lệ jam/total.",
+            )
+        else:
+            c3.metric("Tỷ lệ kẹt xe", "—")
+        c4.metric(
+            "Took",
+            f"{kpi_data.get('took', 0)} ms",
+            help="Thời gian Elasticsearch xử lý query (took field). "
+                 "Đo nội bộ ES, không bao gồm network round-trip.",
+        )
     else:
         st.warning("Backend chưa trả dữ liệu thống kê.")
 
-    # Top routes + speed distribution
-    top_size = st.slider("Top N tuyến", 3, 20, 5, step=1, key="stats_top_size")
+    # ── Top N tuyến ─────────────────────────────────────────────────────────
+    top_size = st.slider(
+        "Top N tuyến", 3, 20, 5, step=1, key="stats_top_size",
+        help="Tham số `size` của terms aggregation. ES sẽ trả N tuyến có "
+             "nhiều xe nhất. N nhỏ = dashboard gọn; N lớn = thấy "
+             "phân bố rộng hơn.",
+    )
 
     top_data = api_get("/api/stats", {**base_params, "metric": "top_routes",
                                       "size": top_size})
@@ -596,48 +640,109 @@ def render_stats():
 
         cc1, cc2 = st.columns([3, 2])
         with cc1:
-            st.caption(f"Top {top_size} tuyến theo số ping (took {top_data.get('took', 0)} ms)")
-            chart_df = df_top.set_index("route_no")[["pings"]]
+            chart_label(
+                f"📊 Top {top_size} tuyến theo số xe đang vận hành",
+                f"Aggregation: terms(route_no) size={top_size} order _count desc, "
+                f"sub-agg cardinality(vehicle) lấy số xe duy nhất. "
+                f"Tuyến đông xe = tuyến hoạt động sôi nổi nhất.",
+                took_ms=top_data.get("took", 0),
+            )
+            chart_df = df_top.set_index("route_no")[["vehicles"]]
             st.bar_chart(chart_df, color="#0d9488", height=300)
         with cc2:
-            st.caption("Tốc độ mỗi tuyến (km/h)")
-            display_df = df_top[["route_no", "route_name", "pings",
+            chart_label(
+                "🚌 Số xe + Tốc độ mỗi tuyến",
+                "Cột Xe = cardinality(vehicle) — số xe duy nhất. "
+                "Avg/Max = avg/max(speed) lồng trong terms bucket. "
+                "Tất cả metric tính trên cùng tập document đã lọc.",
+            )
+            display_df = df_top[["route_no", "vehicles",
                                  "avg_speed", "max_speed"]].rename(columns={
-                "route_no":   "Tuyến",
-                "route_name": "Tên tuyến",
-                "pings":      "Ping",
-                "avg_speed":  "Avg",
-                "max_speed":  "Max",
+                "route_no":  "Tuyến",
+                "vehicles":  "Xe",
+                "avg_speed": "Avg",
+                "max_speed": "Max",
             })
             st.dataframe(display_df, hide_index=True,
                          use_container_width=True, height=300)
     else:
         st.info("Không có dữ liệu top routes.")
 
-    cc3, cc4 = st.columns(2)
-    with cc3:
-        st.caption("Phân bố tốc độ (histogram bin 5 km/h)")
-        sd = api_get("/api/stats", {**base_params, "metric": "speed_dist"})
-        if sd and sd.get("data"):
-            df_sd = pd.DataFrame(sd["data"])
-            df_sd["bin"] = (df_sd["speed_bin"].astype(int).astype(str) + "–"
-                            + (df_sd["speed_bin"].astype(int) + 5).astype(str))
-            st.bar_chart(df_sd.set_index("bin")[["count"]],
-                         color="#f59e0b", height=260)
-            st.caption(f"⚙ took = {sd.get('took', 0)} ms")
+    # ── Hàng 2: pings_per_min — số xe phân theo trạng thái di chuyển ────────
+    pm = api_get("/api/stats", {**base_params, "metric": "pings_per_min",
+                                "interval": "1m"})
+    chart_label(
+        "📈 Số xe duy nhất theo phút — phân theo trạng thái",
+        "Aggregation: date_histogram interval=1m + 2 filter sub-agg "
+        "lồng cardinality(vehicle). 'Đang di chuyển' = xe có ping "
+        "speed ≥ 5 km/h; 'Dừng đèn đỏ/trạm' = xe có ping 1 ≤ speed < 5 "
+        "km/h (dataset gốc không có speed=0 — GPS clamp tối thiểu = 1.0 "
+        "do noise). Xe đỗ depot (speed=null) không tính.",
+        took_ms=pm.get("took", 0) if pm else 0,
+    )
+    if pm and pm.get("data"):
+        df_pm = pd.DataFrame(pm["data"])
+        df_pm["ts"] = pd.to_datetime(df_pm["ts"])
+        df_pm = df_pm.set_index("ts")[["moving", "stopped"]].rename(columns={
+            "moving":  "🟢 Đang di chuyển",
+            "stopped": "🟠 Dừng đèn đỏ / dừng trạm",
+        })
+        st.line_chart(df_pm, height=260, color=["#0d9488", "#f59e0b"])
+    else:
+        st.info("Không có dữ liệu.")
+
+    # ── Hàng 3: speed_by_hour (24h cố định) + top jam routes ───────────────
+    cc5, cc6 = st.columns(2)
+    with cc5:
+        # Override cửa sổ thành 24h cố định cho widget này
+        sh_params = {**base_params, "metric": "speed_by_hour",
+                     "from": "now-24h", "to": "now"}
+        sh = api_get("/api/stats", sh_params)
+        chart_label(
+            "🕐 Tốc độ trung bình theo giờ trong 24h gần nhất",
+            "Aggregation: date_histogram calendar_interval=1h + "
+            "avg(speed, missing=0). Cửa sổ 24h cố định (không theo "
+            "filter row). missing=0 nghĩa là ping không có field speed "
+            "(xe đỗ tại depot, GPS minimal payload mode) được tính "
+            "như speed=0. Vì vậy fleet avg phản ánh đầy đủ: giờ vận "
+            "hành ~20 km/h, giờ xe đỗ tụt gần 0.",
+            took_ms=sh.get("took", 0) if sh else 0,
+        )
+        if sh and sh.get("data"):
+            df_sh = pd.DataFrame(sh["data"])
+            df_sh["ts"] = pd.to_datetime(df_sh["ts"])
+            chart_df = df_sh.set_index("ts")[["avg_speed"]].rename(
+                columns={"avg_speed": "Avg km/h"})
+            st.line_chart(chart_df, height=260, color="#0d9488")
+            st.caption(f"⚙ took = {sh.get('took', 0)} ms · interval 1h "
+                       f"· missing=0 (xe đỗ tính như đứng yên)")
         else:
             st.info("Không có dữ liệu.")
 
-    with cc4:
-        st.caption("Ping/phút trong cửa sổ")
-        pm = api_get("/api/stats", {**base_params, "metric": "pings_per_min",
-                                    "interval": "1m"})
-        if pm and pm.get("data"):
-            df_pm = pd.DataFrame(pm["data"])
-            df_pm["ts"] = pd.to_datetime(df_pm["ts"])
-            df_pm = df_pm.set_index("ts")[["pings", "active_vehicles"]]
-            st.line_chart(df_pm, height=260)
-            st.caption(f"⚙ took = {pm.get('took', 0)} ms · interval 1m")
+    with cc6:
+        tjr = api_get("/api/stats", {**base_params, "metric": "top_jam_routes",
+                                     "size": 5})
+        chart_label(
+            "🚧 Top tuyến kẹt nhất (% bản ghi speed < 5 km/h)",
+            "Aggregation pipeline: terms(route_no) size=50 + filter "
+            "speed<5 + bucket_script tính jam_pct = jam/total + "
+            "bucket_sort sort jam_pct desc. Lấy top 50 tuyến đông xe "
+            "trước rồi mới sort theo jam_pct (tránh tuyến nhỏ <100 "
+            "ping bị nhiễu).",
+            took_ms=tjr.get("took", 0) if tjr else 0,
+        )
+        if tjr and tjr.get("data"):
+            df_jam = pd.DataFrame(tjr["data"])
+            df_show = df_jam[["route_no", "route_name", "vehicles",
+                              "jam_pct", "avg_speed"]].rename(columns={
+                "route_no":   "Tuyến",
+                "route_name": "Tên tuyến",
+                "vehicles":   "Xe",
+                "jam_pct":    "% Kẹt",
+                "avg_speed":  "Avg km/h",
+            })
+            st.dataframe(df_show, hide_index=True,
+                         use_container_width=True, height=240)
         else:
             st.info("Không có dữ liệu.")
 

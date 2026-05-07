@@ -25,10 +25,9 @@ def get_positions(
     """
     Trả vị trí mới nhất mỗi xe dạng GeoJSON FeatureCollection.
 
-    Mục 3.4 — Filtering: minh hoạ pattern bool.filter đa-clause:
-      - term (route_no, plate_no, ignition)
-      - range (@timestamp, speed)
-    Mọi clause đều ở filter context → không tính _score, có cache.
+    Filter chain dùng bool.filter đa-clause (term + range), kết hợp với
+    terms aggregation trên `vehicle` và top_hits size=1 để gom 1 ping mới
+    nhất cho mỗi xe khớp filter — pattern "latest per group".
     """
     es = get_es()
     index = get_index()
