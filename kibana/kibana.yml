@@ -1,9 +1,0 @@
-server.host: "0.0.0.0"
-server.shutdownTimeout: "5s"
-elasticsearch.hosts: ["http://elasticsearch:9200"]
-monitoring.ui.container.elasticsearch.enabled: true
-
-# Dùng OpenStreetMap thay EMS (EMS hay bị 503 ở VN)
-map.includeElasticMapsService: false
-map.tilemap.url: "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
-map.tilemap.options.maxZoom: 19

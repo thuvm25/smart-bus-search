@@ -17,13 +17,37 @@ def get_positions(
     to: str = Query(default="now"),
     max_vehicles: int = Query(default=200, ge=1, le=2000),
     route_no: str = Query(default=""),
+    plate_no: str = Query(default=""),
+    ignition: str = Query(default="", description="'true' / 'false' / ''"),
+    speed_gte: float | None = Query(default=None, ge=0, le=200),
+    speed_lt:  float | None = Query(default=None, ge=0, le=200),
 ):
+    """
+    Trả vị trí mới nhất mỗi xe dạng GeoJSON FeatureCollection.
+
+    Filter chain dùng bool.filter đa-clause (term + range), kết hợp với
+    terms aggregation trên `vehicle` và top_hits size=1 để gom 1 ping mới
+    nhất cho mỗi xe khớp filter — pattern "latest per group".
+    """
     es = get_es()
     index = get_index()
 
+    # ── bool.filter — multi-clause, mỗi tham số non-empty thêm 1 clause ───
     filters = [{"range": {"@timestamp": {"gte": from_, "lte": to}}}]
     if route_no:
         filters.append({"term": {"route_no": route_no}})
+    if plate_no:
+        filters.append({"term": {"plate_no": plate_no}})
+    if ignition.lower() in ("true", "false"):
+        filters.append({"term": {"ignition": ignition.lower() == "true"}})
+
+    if speed_gte is not None or speed_lt is not None:
+        rng: dict = {}
+        if speed_gte is not None:
+            rng["gte"] = speed_gte
+        if speed_lt is not None:
+            rng["lt"] = speed_lt
+        filters.append({"range": {"speed": rng}})
 
     body = {
         "size": 0,
@@ -43,7 +67,7 @@ def get_positions(
                             "sort": [{"@timestamp": {"order": "desc"}}],
                             "_source": [
                                 "vehicle", "lat", "lon", "speed", "heading",
-                                "route_no", "route_name", "@timestamp",
+                                "route_no", "route_name", "plate_no", "@timestamp",
                                 "ignition", "aircon",
                             ],
                         }
@@ -79,6 +103,7 @@ def get_positions(
                 "heading":    src.get("heading", 0),
                 "route_no":   src.get("route_no", ""),
                 "route_name": src.get("route_name", ""),
+                "plate_no":   src.get("plate_no", ""),
                 "timestamp":  src.get("@timestamp", ""),
                 "ignition":   src.get("ignition", False),
                 "aircon":     src.get("aircon", False),
@@ -88,7 +113,18 @@ def get_positions(
         })
 
     return {
-        "type": "FeatureCollection",
+        "type":  "FeatureCollection",
         "count": len(features),
+        "took":  resp.get("took"),
+        "applied_filters": {
+            "from":      from_,
+            "to":        to,
+            "route_no":  route_no or None,
+            "plate_no":  plate_no or None,
+            "ignition":  ignition or None,
+            "speed_gte": speed_gte,
+            "speed_lt":  speed_lt,
+        },
+        "filter_clauses_count": len(filters),
         "features": features,
     }

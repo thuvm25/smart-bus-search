@@ -49,21 +49,7 @@ services:
       timeout: 5s
       retries: 10
 
-  # ── Visualization ──────────────────────────────────────────
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.15.0
-    container_name: smart-bus-kibana
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    environment:
-      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
-    ports:
-      - "5601:5601"
-    volumes:
-      - ./kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
-
-  # ── Index Initializer (runs once, must finish before Logstash) ──
+  # ── Index Initializers (run once, must finish before Logstash) ───
   init-index:
     build:
       context: .
@@ -80,6 +66,24 @@ services:
     command: python scripts/create_index.py
     restart: "no"
 
+  init-routes:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: smart-bus-init-routes
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      ES_HOST: http://elasticsearch:9200
+      ROUTES_FILE: /app/data/raw/routes_clean.json
+      VEHICLE_MAP: /app/data/raw/vehicle_route_mapping.json
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./data:/app/data:ro
+    command: python scripts/index_routes.py
+    restart: "no"
+
   # ── ETL: Kafka → Elasticsearch ─────────────────────────────
   logstash:
     image: docker.elastic.co/logstash/logstash:8.15.0
@@ -90,6 +94,8 @@ services:
       kafka:
         condition: service_healthy
       init-index:
+        condition: service_completed_successfully
+      init-routes:
         condition: service_completed_successfully
     volumes:
       - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
@@ -130,7 +136,15 @@ services:
     volumes:
       - ./ui:/app/ui
       - ./requirements.txt:/app/requirements.txt:ro
-    command: streamlit run /app/ui/smartsearchbus_web.py --server.address 0.0.0.0 --server.runOnSave true
+    command: >
+      streamlit run /app/ui/smartsearchbus_web.py
+      --server.address 0.0.0.0
+      --server.runOnSave true
+      --theme.base light
+      --theme.primaryColor "#00b3a4"
+      --theme.backgroundColor "#ebeef2"
+      --theme.secondaryBackgroundColor "#dde1e7"
+      --theme.textColor "#1f2328"
 
   # ── Simulator (Data Producer) ──────────────────────────────
   simulator:
