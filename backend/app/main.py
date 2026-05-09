@@ -13,7 +13,7 @@ Docs:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import fuzzysearch, livebus, nearby
+from .routers import activity, fuzzysearch, livebus, nearby
 from .core.es_client import get_es, get_index, ES_HOST
 
 app = FastAPI(
@@ -40,6 +40,7 @@ app.add_middleware(
 app.include_router(livebus.router,  prefix="/api", tags=["LiveBus"])
 app.include_router(fuzzysearch.router, prefix="/api", tags=["FuzzySearch"])
 app.include_router(nearby.router,   prefix="/api", tags=["Nearby"])
+app.include_router(activity.router, prefix="/api", tags=["Activity"])
 
 
 # ── Health ─────────────────────────────────────────────────────────────────────
@@ -79,5 +80,7 @@ def root():
             "/api/livebus",
             "/api/nearby_buses",
             "/api/nearby_stops",
+            "/api/most_active_bus",
+            "/api/bus_track",
         ],
     }

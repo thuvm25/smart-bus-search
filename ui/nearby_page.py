@@ -92,6 +92,11 @@ def _location_controls() -> None:
 
 
 def render_nearby_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
+    st.markdown(
+        "<h1 style='color:#e6edf3; font-size:2rem; font-weight:800; margin-bottom:0'>"
+        "📌 Smart Bus GPS — Tìm xe / trạm gần bạn</h1>",
+        unsafe_allow_html=True,
+    )
     st.markdown('<div class="section-header">📌 Tìm xe buýt / trạm gần bạn</div>', unsafe_allow_html=True)
 
     # Seed defaults so the geolocation handler can write to them before the
