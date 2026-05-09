@@ -166,13 +166,17 @@ def get_stats(
             "data":   _fill_route_names(es, items),
         }
 
-    # ── 2. Pings per minute — phân loại trạng thái theo dải tốc độ ────────────
-    # Lưu ý: dataset gốc không có speed=0 (GPS device clamp tối thiểu = 1.0).
-    # Xe đang dừng đèn đỏ / dừng trạm thực ra báo speed = 1-4 km/h do GPS noise.
-    # Phân nhóm:
-    #   - moving   : speed ≥ 5         (đang di chuyển thật)
-    #   - stopped  : 1 ≤ speed < 5    (dừng đèn đỏ / dừng trạm)
-    #   - all      : tất cả ping      (kể cả speed=null = đỗ depot)
+    # ── 2. Pings per minute — phân loại trạng thái theo MAX(speed) ────────────
+    # Mỗi xe trong 1 phút có nhiều ping (10–30s/ping). Để 2 nhóm
+    # mutually-exclusive (tổng = số xe duy nhất), ta phân loại mỗi xe theo
+    # tốc độ MAX trong phút đó:
+    #   - moving   : max_speed ≥ 5         (xe đã từng di chuyển trong phút)
+    #   - stopped  : max < 5 hoặc null    (xe không di chuyển — dừng đèn đỏ,
+    #                                       dừng trạm, hoặc đỗ depot
+    #                                       gửi heartbeat speed=null)
+    #
+    # Pattern: date_histogram → terms(vehicle) → max(speed). Hiệu quả hơn
+    # top_hits nhiều lần (chỉ tính max thay vì fetch _source).
     if metric == "pings_per_min":
         body = {
             "size": 0,
@@ -185,16 +189,15 @@ def get_stats(
                         "min_doc_count":  0,
                     },
                     "aggs": {
-                        "moving": {
-                            "filter": {"range": {"speed": {"gte": 5}}},
-                            "aggs": {"vehs": {"cardinality": {"field": "vehicle"}}},
-                        },
-                        "stopped": {
-                            "filter": {"range": {"speed": {"gte": 0, "lt": 5}}},
-                            "aggs": {"vehs": {"cardinality": {"field": "vehicle"}}},
-                        },
-                        "active_vehicles": {
-                            "cardinality": {"field": "vehicle"}
+                        "by_vehicle": {
+                            "terms": {
+                                "field": "vehicle",
+                                # ~300–450 xe online/phút thực tế
+                                "size":  1000,
+                            },
+                            "aggs": {
+                                "max_speed": {"max": {"field": "speed"}},
+                            },
                         },
                     },
                 }
@@ -202,21 +205,30 @@ def get_stats(
         }
         resp = es.search(index=index, body=body)
         buckets = resp["aggregations"]["per_bucket"]["buckets"]
+
+        data = []
+        for b in buckets:
+            moving = stopped = 0
+            for vb in b["by_vehicle"]["buckets"]:
+                ms = vb["max_speed"]["value"]
+                if ms is not None and ms >= 5:
+                    moving += 1
+                else:
+                    stopped += 1
+            data.append({
+                "ts":              b["key_as_string"],
+                "pings":           b["doc_count"],
+                "moving":          moving,
+                "stopped":         stopped,
+                "active_vehicles": moving + stopped,
+            })
+
         return {
             "metric":   metric,
             "took":     resp.get("took"),
             "interval": interval,
             "window":   {"from": from_, "to": to},
-            "data": [
-                {
-                    "ts":              b["key_as_string"],
-                    "pings":           b["doc_count"],
-                    "moving":          b["moving"]["vehs"]["value"],
-                    "stopped":         b["stopped"]["vehs"]["value"],
-                    "active_vehicles": b["active_vehicles"]["value"],
-                }
-                for b in buckets
-            ],
+            "data":     data,
         }
 
     # ── 4. Vehicles active (cardinality) ───────────────────────────────────────

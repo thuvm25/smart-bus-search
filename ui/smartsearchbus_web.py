@@ -673,21 +673,38 @@ def render_stats():
                                 "interval": "1m"})
     chart_label(
         "📈 Số xe duy nhất theo phút — phân theo trạng thái",
-        "Aggregation: date_histogram interval=1m + 2 filter sub-agg "
-        "lồng cardinality(vehicle). 'Đang di chuyển' = xe có ping "
-        "speed ≥ 5 km/h; 'Dừng đèn đỏ/trạm' = xe có ping 1 ≤ speed < 5 "
-        "km/h (dataset gốc không có speed=0 — GPS clamp tối thiểu = 1.0 "
-        "do noise). Xe đỗ depot (speed=null) không tính.",
+        "Aggregation: date_histogram interval=1m → terms(vehicle) → "
+        "max(speed). Mỗi xe được phân đúng 1 nhóm theo MAX(speed) trong "
+        "phút (mutually exclusive): "
+        "'Đang di chuyển' = max ≥ 5 km/h; "
+        "'Dừng/đỗ' = max < 5 km/h hoặc speed=null (đèn đỏ, dừng trạm, "
+        "đỗ depot heartbeat). Tổng 2 nhóm = số xe duy nhất.",
         took_ms=pm.get("took", 0) if pm else 0,
     )
     if pm and pm.get("data"):
         df_pm = pd.DataFrame(pm["data"])
         df_pm["ts"] = pd.to_datetime(df_pm["ts"])
-        df_pm = df_pm.set_index("ts")[["moving", "stopped"]].rename(columns={
-            "moving":  "🟢 Đang di chuyển",
-            "stopped": "🟠 Dừng đèn đỏ / dừng trạm",
+
+        chart_df = df_pm.set_index("ts")[
+            ["active_vehicles", "moving", "stopped"]
+        ].rename(columns={
+            "active_vehicles": "Tổng xe online",
+            "moving":          "Đang di chuyển (≥5 km/h)",
+            "stopped":         "Dừng/đỗ (<5 km/h)",
         })
-        st.line_chart(df_pm, height=260, color=["#0d9488", "#f59e0b"])
+        st.line_chart(chart_df, height=300,
+                      color=["#475569", "#0d9488", "#f59e0b"])
+
+        # Thông tin diễn giải
+        last = df_pm.iloc[-1]
+        moving_pct = (last["moving"] / last["active_vehicles"] * 100
+                      if last["active_vehicles"] else 0)
+        st.caption(
+            f"⚙ took = {pm.get('took', 0)} ms · interval 1m · "
+            f"phút mới nhất: {int(last['active_vehicles'])} xe online "
+            f"({int(last['moving'])} đang chạy — {moving_pct:.1f}%, "
+            f"{int(last['stopped'])} dừng/đỗ)"
+        )
     else:
         st.info("Không có dữ liệu.")
 
