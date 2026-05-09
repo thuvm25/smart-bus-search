@@ -13,7 +13,16 @@ Docs:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import activity, fuzzysearch, livebus, nearby
+from .routers import (
+    activity,
+    filterbus,
+    fuzzysearch,
+    livebus,
+    nearby,
+    platesearch,
+    routedetail,
+    stats,
+)
 from .core.es_client import get_es, get_index, ES_HOST
 
 app = FastAPI(
@@ -37,10 +46,14 @@ app.add_middleware(
 )
 
 # ── Routers ────────────────────────────────────────────────────────────────────
-app.include_router(livebus.router,  prefix="/api", tags=["LiveBus"])
+app.include_router(livebus.router,     prefix="/api", tags=["LiveBus"])
 app.include_router(fuzzysearch.router, prefix="/api", tags=["FuzzySearch"])
-app.include_router(nearby.router,   prefix="/api", tags=["Nearby"])
-app.include_router(activity.router, prefix="/api", tags=["Activity"])
+app.include_router(platesearch.router, prefix="/api", tags=["PlateSearch"])
+app.include_router(routedetail.router, prefix="/api", tags=["RouteDetail"])
+app.include_router(stats.router,       prefix="/api", tags=["Stats (Aggregation)"])
+app.include_router(filterbus.router,   prefix="/api", tags=["Filter"])
+app.include_router(nearby.router,      prefix="/api", tags=["Nearby"])
+app.include_router(activity.router,    prefix="/api", tags=["Activity"])
 
 
 # ── Health ─────────────────────────────────────────────────────────────────────
@@ -76,11 +89,19 @@ def root():
         "docs": "/docs",
         "health": "/health",
         "endpoints": [
-            "/api/fuzzysearch",
             "/api/livebus",
+            "/api/fuzzysearch",
+            "/api/platesearch",
+            "/api/routedetail",
+            "/api/stats",
+            "/api/filter",
             "/api/nearby_buses",
             "/api/nearby_stops",
             "/api/most_active_bus",
             "/api/bus_track",
+        ],
+        "stats_metrics": [
+            "top_routes", "top_jam_routes", "traffic_jam",
+            "pings_per_min", "vehicles_active", "speed_by_hour",
         ],
     }

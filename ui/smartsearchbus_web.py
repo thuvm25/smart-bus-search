@@ -6,7 +6,8 @@ Run:
     streamlit run ui/smartsearchbus_web.py
 
 Each sidebar tab is a real page with its own URL:
-    /dashboard   — live map + fuzzy search
+    /dashboard   — comprehensive live dashboard (search, plate filter,
+                   advanced filters, live map, route detail, stats)
     /nearby      — buses & stops within radius
     /activity    — most active buses + per-bus track
 
@@ -38,16 +39,19 @@ st.set_page_config(
 # ── Custom CSS ─────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-/* ── Global dark theme tweaks ── */
-[data-testid="stAppViewContainer"] {
-    background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
-}
+[data-testid="stAppViewContainer"], [data-testid="stMain"] { background: #ebeef2; }
 
-/* ── Sidebar ── */
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #161b22 0%, #1c2128 100%);
-    border-right: 1px solid #30363d;
+button[data-testid="stBaseButton-secondary"],
+button[data-testid="stBaseButton-primary"],
+.stButton > button,
+div[data-testid="stButton"] > button {
+    justify-content: flex-start !important;
+    text-align: left !important;
+    padding-left: 16px !important;
 }
+button[data-testid="stBaseButton-secondary"] > div,
+.stButton > button > div { text-align: left !important; width: 100% !important; }
+.stButton > button p { text-align: left !important; white-space: pre-wrap !important; }
 
 /* ── Sidebar brand title (injected above st.navigation menu) ── */
 [data-testid="stSidebarNav"]::before {
@@ -64,83 +68,93 @@ st.markdown("""
 
 /* ── Metric cards ── */
 [data-testid="stMetric"] {
-    background: linear-gradient(135deg, #1c2128 0%, #21262d 100%);
-    border: 1px solid #30363d;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #d6d6d2;
     border-radius: 12px;
-    padding: 20px 24px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-[data-testid="stMetric"]:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(0,179,164,0.2);
+    padding: 14px 18px;
+    box-shadow: 0 4px 16px rgba(15,23,42,0.06);
 }
 [data-testid="stMetricLabel"] {
-    color: #8b949e !important;
-    font-size: 0.85rem !important;
+    color: #64748b !important;
+    font-size: 0.72rem !important;
     font-weight: 600 !important;
-    letter-spacing: 0.05em;
     text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 [data-testid="stMetricValue"] {
-    color: #00b3a4 !important;
-    font-size: 2.4rem !important;
+    color: #0d9488 !important;
+    font-size: 1.6rem !important;
     font-weight: 700 !important;
 }
-[data-testid="stMetricDelta"] {
-    font-size: 0.8rem !important;
-}
 
-/* ── Section headers ── */
 .section-header {
-    color: #e6edf3;
-    font-size: 1.15rem;
+    color: #0f172a;
+    font-size: 1.1rem;
     font-weight: 700;
-    letter-spacing: 0.02em;
-    margin: 0.5rem 0 1rem 0;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #30363d;
+    margin: 0.5rem 0 0.8rem 0;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #d6d6d2;
 }
 
-/* ── Status badge ── */
-.status-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-}
-.status-online { background: rgba(35,197,94,0.15); color: #23c55e; border: 1px solid #23c55e44; }
-
-/* ── Search box accent ── */
 [data-testid="stTextInput"] input {
-    background: #21262d !important;
-    border-color: #30363d !important;
-    color: #e6edf3 !important;
+    background: #ffffff !important;
+    border-color: #d6d6d2 !important;
+    color: #0f172a !important;
     border-radius: 8px !important;
 }
-[data-testid="stTextInput"] input:focus {
-    border-color: #00b3a4 !important;
-    box-shadow: 0 0 0 2px rgba(0,179,164,0.2) !important;
+[data-testid="stCustomComponentV1"] {
+    height: 44px !important;
+    min-height: unset !important;
+    overflow: hidden !important;
 }
 
-/* ── DataFrame ── */
+.selected-banner {
+    background: rgba(13,148,136,0.10);
+    border: 1px solid rgba(13,148,136,0.4);
+    border-radius: 8px;
+    padding: 8px 14px;
+    color: #0f172a;
+    font-size: 0.9rem;
+}
+.result-count { color: #57606a; font-size: 0.82rem; margin-bottom: 6px; }
+
+.filter-chip {
+    display: inline-block;
+    background: rgba(13,148,136,0.10);
+    color: #0d9488;
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-right: 6px;
+}
+
+.route-info-card {
+    background: #ffffff;
+    border: 1px solid #d6d6d2;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+}
+.route-info-card .row {
+    display: flex; gap: 8px; padding: 4px 0;
+    font-size: 0.85rem; color: #334155;
+}
+.route-info-card .row b { color: #0f172a; min-width: 110px; }
+
 [data-testid="stDataFrame"] {
-    border: 1px solid #30363d;
+    border: 1px solid #d6d6d2;
     border-radius: 8px;
     overflow: hidden;
 }
-
-/* ── Divider ── */
-hr { border-color: #30363d !important; }
+hr { border-color: #d6d6d2 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def api_get(path: str, params: Optional[Dict] = None) -> Optional[Any]:
-    """Call the FastAPI backend; return parsed JSON or None on error."""
+    """Call FastAPI; return None on error."""
     try:
         r = requests.get(f"{API_BASE}{path}", params=params, timeout=8)
         r.raise_for_status()
@@ -152,12 +166,11 @@ def api_get(path: str, params: Optional[Dict] = None) -> Optional[Any]:
 
 
 def speed_color(speed: float) -> List[int]:
-    """Map speed 0–50+ km/h → RGB (green→yellow→red). Calibrated for HCMC traffic."""
+    """Map speed 0–50+ km/h → RGB (xanh→vàng→đỏ)."""
     pct = min(speed / 50.0, 1.0)
     if pct < 0.5:
         return [int(255 * 2 * pct), 200, 0, 220]
-    else:
-        return [255, int(200 * (1 - 2 * (pct - 0.5))), 0, 220]
+    return [255, int(200 * (1 - 2 * (pct - 0.5))), 0, 220]
 
 
 # ── Page wrappers (each becomes a route) ───────────────────────────────────────
@@ -181,10 +194,10 @@ pages = [
 ]
 nav = st.navigation(pages, position="sidebar")
 
-# Run the page selected by st.navigation. Per-page sidebar widgets (e.g. the
-# Dashboard's auto-refresh checkbox) are added inside each render_*_page().
-# The "🚌 Smart Bus GPS" brand sits above the nav via CSS (::before on
-# stSidebarNav), since st.sidebar content always renders below the menu.
+# Run the page selected by st.navigation. Per-page sidebar widgets are added
+# inside each render_*_page(). The "🚌 Smart Bus GPS" brand sits above the nav
+# via CSS (::before on stSidebarNav), since st.sidebar content always renders
+# below the menu.
 nav.run()
 
 with st.sidebar:
@@ -193,8 +206,10 @@ with st.sidebar:
 
 st.markdown("---")
 st.markdown(
-    "<div style='text-align:center; color:#8b949e; font-size:0.78rem; padding:8px 0'>"
-    "Smart Bus GPS Dashboard · Powered by FastAPI + Elasticsearch + Streamlit"
+    "<div style='text-align:center; color:#64748b; font-size:0.78rem; padding:8px 0'>"
+    "Smart Bus GPS Dashboard · FastAPI + Elasticsearch + Streamlit · "
+    "Endpoints: livebus · fuzzysearch · platesearch · routedetail · stats · "
+    "nearby · activity"
     "</div>",
     unsafe_allow_html=True,
 )
