@@ -59,7 +59,7 @@ def most_active_bus(
                             "size": 1,
                             "sort": [{"@timestamp": {"order": "desc"}}],
                             "_source": [
-                                "vehicle", "lat", "lon", "speed", "heading",
+                                "vehicle", "plate_no", "lat", "lon", "speed", "heading",
                                 "route_no", "route_name", "@timestamp",
                             ],
                         }
@@ -83,6 +83,7 @@ def most_active_bus(
             continue
         data.append({
             "vehicle":    src.get("vehicle", b["key"]),
+            "plate_no":   src.get("plate_no", ""),
             "pings":      b["doc_count"],
             "avg_speed":  round(b["avg_speed"]["value"] or 0, 1),
             "max_speed":  round(b["max_speed"]["value"] or 0, 1),

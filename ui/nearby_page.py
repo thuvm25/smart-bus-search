@@ -53,8 +53,16 @@ def _handle_geolocation() -> None:
     if loc and isinstance(loc, dict) and loc.get("coords"):
         coords = loc["coords"]
         try:
-            st.session_state["nb_lat"] = float(coords.get("latitude"))
-            st.session_state["nb_lon"] = float(coords.get("longitude"))
+            lat = float(coords.get("latitude"))
+            lon = float(coords.get("longitude"))
+            # streamlit_js_eval/browser returns (0, 0) when permission denied or
+            # GPS unavailable. Reject it so the map doesn't jump to Null Island.
+            if lat == 0.0 and lon == 0.0:
+                st.session_state["_loc_pending"] = False
+                st.session_state["_loc_err"] = "Trình duyệt chưa trả về vị trí hợp lệ — hãy cấp quyền truy cập vị trí."
+                return
+            st.session_state["nb_lat"] = lat
+            st.session_state["nb_lon"] = lon
             st.session_state["_loc_pending"] = False
             st.session_state["_loc_ok"] = True
             st.rerun()
@@ -93,7 +101,7 @@ def _location_controls() -> None:
 
 def render_nearby_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
     st.markdown(
-        "<h1 style='color:#e6edf3; font-size:2rem; font-weight:800; margin-bottom:0'>"
+        "<h1 style='color:#0f172a; font-size:2rem; font-weight:800; margin-bottom:0'>"
         "📌 Smart Bus GPS — Tìm xe / trạm gần bạn</h1>",
         unsafe_allow_html=True,
     )
@@ -111,7 +119,7 @@ def render_nearby_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
     nb_lat = c1.number_input("Vĩ độ (lat)", format="%.6f", step=0.0001, key="nb_lat")
     nb_lon = c2.number_input("Kinh độ (lon)", format="%.6f", step=0.0001, key="nb_lon")
     nb_radius = c3.slider("Bán kính (m)", min_value=100, max_value=3000, value=500, step=50, key="nb_radius")
-    show_stops = c4.checkbox("Hiển thị trạm (heuristic)", value=True, key="nb_show_stops")
+    show_stops = c4.checkbox("Hiển thị trạm (ước lượng)", value=True, key="nb_show_stops")
 
     st.caption(
         "💡 Mặc định là Bến Thành (10.7769, 106.7009). Bấm \"📍 Dùng vị trí của tôi\" để dùng GPS trình duyệt, "

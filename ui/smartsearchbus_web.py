@@ -23,14 +23,13 @@ import streamlit as st
 
 from activity_page import render_activity_page
 from dashboard_page import render_dashboard_page
-from nearby_page import render_nearby_page
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 API_BASE = os.getenv("API_BASE", "http://localhost:8000")
 
 # ── Page Setup ─────────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="🚌 Smart Bus GPS Dashboard",
+    page_title="Smart Bus GPS — Dashboard",
     page_icon="🚌",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -53,17 +52,28 @@ button[data-testid="stBaseButton-secondary"] > div,
 .stButton > button > div { text-align: left !important; width: 100% !important; }
 .stButton > button p { text-align: left !important; white-space: pre-wrap !important; }
 
+/* ── Sidebar: aggressively tighten Streamlit's default top padding ── */
+[data-testid="stSidebarHeader"] {
+    padding: 0.25rem 0.75rem !important;
+    min-height: unset !important;
+    height: auto !important;
+}
+[data-testid="stSidebarContent"],
+[data-testid="stSidebarUserContent"] { padding-top: 0 !important; }
+section[data-testid="stSidebar"] > div { padding-top: 0 !important; }
+[data-testid="stSidebarNav"] { margin-top: 0 !important; padding-top: 0 !important; }
+
 /* ── Sidebar brand title (injected above st.navigation menu) ── */
 [data-testid="stSidebarNav"]::before {
     content: "🚌 Smart Bus GPS";
     display: block;
-    color: #e6edf3;
-    font-size: 1.4rem;
+    color: #0f172a;
+    font-size: 1.2rem;
     font-weight: 800;
     letter-spacing: 0.02em;
-    padding: 1.25rem 1.5rem 0.75rem;
-    border-bottom: 1px solid #30363d;
-    margin-bottom: 0.5rem;
+    padding: 0 1rem 0.5rem;
+    border-bottom: 1px solid rgba(127,127,127,0.25);
+    margin: 0 0 0.25rem;
 }
 
 /* ── Metric cards ── */
@@ -178,19 +188,14 @@ def _dashboard() -> None:
     render_dashboard_page(api_get, speed_color)
 
 
-def _nearby() -> None:
-    render_nearby_page(api_get, speed_color)
-
-
 def _activity() -> None:
     render_activity_page(api_get, speed_color)
 
 
 # ── Navigation (one URL per page) ──────────────────────────────────────────────
 pages = [
-    st.Page(_dashboard, title="Dashboard",   icon="🚌", url_path="dashboard", default=True),
-    st.Page(_nearby,    title="Tìm gần tôi", icon="📌", url_path="nearby"),
-    st.Page(_activity,  title="Hoạt động",   icon="📊", url_path="activity"),
+    st.Page(_dashboard, title="Dashboard", icon="🚌", url_path="dashboard", default=True),
+    st.Page(_activity,  title="Hoạt động", icon="📊", url_path="activity"),
 ]
 nav = st.navigation(pages, position="sidebar")
 
@@ -201,14 +206,20 @@ nav = st.navigation(pages, position="sidebar")
 nav.run()
 
 with st.sidebar:
-    st.markdown("---")
-    st.info("Trang web chuyên dụng tìm kiếm và theo dõi xe buýt thời gian thực.")
+    st.markdown(
+        "<div style='margin-top:0.75rem; padding:10px 14px; border-radius:8px; "
+        "background:rgba(13,148,136,0.10); border:1px solid rgba(13,148,136,0.25); "
+        "font-size:0.85rem; line-height:1.4; color:#0f172a;'>"
+        "Trang web chuyên dụng tìm kiếm và theo dõi xe buýt thời gian thực."
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
 st.markdown("---")
 st.markdown(
     "<div style='text-align:center; color:#64748b; font-size:0.78rem; padding:8px 0'>"
-    "Smart Bus GPS Dashboard · FastAPI + Elasticsearch + Streamlit · "
-    "Endpoints: livebus · fuzzysearch · platesearch · routedetail · stats · "
+    "Smart Bus GPS · Dashboard · Nền tảng: FastAPI + Elasticsearch + Streamlit · "
+    "Dịch vụ: livebus · fuzzysearch · platesearch · routedetail · stats · "
     "nearby · activity"
     "</div>",
     unsafe_allow_html=True,
