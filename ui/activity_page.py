@@ -115,7 +115,7 @@ def _render_active_buses(api_get: ApiGet, speed_color: SpeedColor) -> List[Dict[
             "<b style='color:#00b3a4'>🚌 {vehicle}</b><br>"
             "📡 Ping: <b>{pings}</b><br>"
             "🗺 Tuyến {route_no}: {route_name}<br>"
-            "🚀 TB: <b>{avg_speed} km/h</b> · ⚡ Max: <b>{max_speed} km/h</b><br>"
+            "🚀 TB: <b>{avg_speed} km/h</b> · ⚡ Tối đa: <b>{max_speed} km/h</b><br>"
             "🕐 {timestamp}"
             "</div>"
         ),
@@ -132,7 +132,7 @@ def _render_active_buses(api_get: ApiGet, speed_color: SpeedColor) -> List[Dict[
             "vehicle": "Xe",
             "pings": "Số ping",
             "avg_speed": "Tốc độ TB (km/h)",
-            "max_speed": "Tốc độ max (km/h)",
+            "max_speed": "Tốc độ tối đa (km/h)",
             "route_no": "Tuyến",
             "route_name": "Tên tuyến",
             "timestamp": "Cập nhật",
@@ -177,31 +177,42 @@ def _render_bus_track(api_get: ApiGet, speed_color: SpeedColor, top_rows: List[D
 
     st.caption(f"⏱ Hiển thị hành trình trong **{window_text}** gần nhất.")
 
-    suggestions = [r["vehicle"] for r in top_rows if r.get("vehicle")]
-    options = ["— Nhập thủ công —"] + suggestions
+    vehicle_options = [r["vehicle"] for r in top_rows if r.get("vehicle")]
 
-    c1, c2 = st.columns([2, 3])
-    chosen = c1.selectbox(
-        "Chọn xe (top hoạt động) hoặc nhập thủ công:",
-        options,
-        index=1 if len(options) > 1 else 0,
+    def _vehicle_label(row: Dict[str, Any]) -> str:
+        veh = str(row.get("vehicle") or "")
+        route_no = str(row.get("route_no") or "").strip()
+        route_name = str(row.get("route_name") or "").strip()
+        if route_no and route_name:
+            return f"Xe {veh} — Tuyến {route_no}: {route_name}"
+        if route_no:
+            return f"Xe {veh} — Tuyến {route_no}"
+        if route_name:
+            return f"Xe {veh} — {route_name}"
+        return f"Xe {veh}"
+
+    label_by_vehicle = {
+        r["vehicle"]: _vehicle_label(r)
+        for r in top_rows if r.get("vehicle")
+    }
+
+    if not vehicle_options:
+        st.info("Chưa có xe hoạt động trong khoảng thời gian đã chọn ở mục trên.")
+        return
+
+    vehicle = st.selectbox(
+        "Chọn xe (top hoạt động):",
+        vehicle_options,
+        index=0,
+        format_func=lambda v: label_by_vehicle.get(v, v),
         key="track_pick",
     )
-    manual = c2.text_input(
-        "Mã xe (vehicle ID):",
-        value="" if chosen == "— Nhập thủ công —" else chosen,
-        placeholder="VD: 51B-12345",
-        key="track_vehicle_input",
-    )
-    vehicle = manual.strip()
 
-    if not vehicle:
-        st.info("Nhập mã xe hoặc chọn từ danh sách phía trên để xem hành trình.")
-        return
+    vehicle_label = label_by_vehicle.get(vehicle, vehicle)
 
     track = api_get("/api/bus_track", {"vehicle": vehicle, "from": from_arg, "to": "now"})
     if not track or not track.get("points"):
-        st.warning(f"Không có dữ liệu hành trình cho xe **{vehicle}** trong {window_text} qua.")
+        st.warning(f"Không có dữ liệu hành trình cho xe **{vehicle_label}** trong {window_text} qua.")
         return
 
     points = track["points"]
@@ -211,7 +222,7 @@ def _render_bus_track(api_get: ApiGet, speed_color: SpeedColor, top_rows: List[D
     k1.metric("📍 Số điểm", f"{track['count']}")
     k2.metric("📏 Quãng đường", f"{track['total_distance_m'] / 1000:.2f} km")
     k3.metric("🚀 Tốc độ TB", f"{track['avg_speed']} km/h")
-    k4.metric("⚡ Tốc độ max", f"{track['max_speed']} km/h")
+    k4.metric("⚡ Tốc độ tối đa", f"{track['max_speed']} km/h")
 
     if track.get("route_no") or track.get("route_name"):
         st.caption(f"🗺 Tuyến **{track.get('route_no', '')}** — {track.get('route_name', '')}")
@@ -219,7 +230,7 @@ def _render_bus_track(api_get: ApiGet, speed_color: SpeedColor, top_rows: List[D
     path_coords = [[p["lon"], p["lat"]] for p in points]
     path_layer = pdk.Layer(
         "PathLayer",
-        data=[{"path": path_coords, "name": vehicle}],
+        data=[{"path": path_coords, "name": vehicle_label}],
         get_path="path",
         get_color=[0, 179, 164, 220],
         get_width=5,
@@ -228,7 +239,7 @@ def _render_bus_track(api_get: ApiGet, speed_color: SpeedColor, top_rows: List[D
     )
 
     df_pts["color"] = df_pts["speed"].apply(speed_color)
-    df_pts["label"] = f"📍 {vehicle}"
+    df_pts["label"] = f"📍 {vehicle_label}"
     pings_layer = pdk.Layer(
         "ScatterplotLayer",
         data=df_pts,
@@ -310,15 +321,10 @@ def _render_bus_track(api_get: ApiGet, speed_color: SpeedColor, top_rows: List[D
 
 def render_activity_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
     st.markdown(
-        "<h1 style='color:#e6edf3; font-size:2rem; font-weight:800; margin-bottom:0'>"
+        "<h1 style='color:#0f172a; font-size:2rem; font-weight:800; margin-bottom:0'>"
         "📊 Smart Bus GPS — Hoạt động & Hành trình xe</h1>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        '<div class="section-header">📊 Phân tích hoạt động xe buýt</div>',
         unsafe_allow_html=True,
     )
 
     top_rows = _render_active_buses(api_get, speed_color)
-    st.markdown("---")
     _render_bus_track(api_get, speed_color, top_rows)

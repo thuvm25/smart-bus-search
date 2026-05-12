@@ -9,12 +9,15 @@ Comprehensive real-time dashboard:
 
 from __future__ import annotations
 
+import math
 from typing import Any, Callable, Dict, List, Optional
 
 import pandas as pd
 import pydeck as pdk
 import streamlit as st
 from st_keyup import st_keyup
+
+from nearby_page import _handle_geolocation, _location_controls, circle_polygon
 
 
 ApiGet = Callable[[str, Optional[Dict]], Optional[Any]]
@@ -31,6 +34,12 @@ DEFAULTS = {
     "filter_ignition":     "—",
     "filter_speed_min":    0,
     "filter_speed_max":    80,
+    # "Tìm gần một điểm" mode — overrides /api/livebus với /api/nearby_buses
+    "nb_enabled":          False,
+    "nb_lat":              10.7769,
+    "nb_lon":              106.7009,
+    "nb_radius":           500,
+    "nb_show_stops":       True,
 }
 
 
@@ -39,7 +48,7 @@ def _chart_label(title: str, help_text: str, took_ms: int = 0) -> None:
     + tooltip Streamlit native — giống hệt st.metric."""
     took_suffix = (f" <span style='color:#64748b; font-weight:400; "
                    f"font-size:0.85em; margin-left:8px'>"
-                   f"took {took_ms} ms</span>") if took_ms else ""
+                   f"{took_ms} ms</span>") if took_ms else ""
     st.markdown(
         f"**{title}**{took_suffix}",
         unsafe_allow_html=True,
@@ -131,18 +140,26 @@ def _build_stats_params() -> Dict:
 
 def _filter_summary() -> str:
     """Render gọn các filter đang áp dụng để hiện trên caption."""
-    parts: list = [f"`{st.session_state['filter_window']}` → now"]
+    _window_labels = {
+        "now-15m": "15 phút qua",
+        "now-30m": "30 phút qua",
+        "now-1h":  "1 giờ qua",
+        "now-3h":  "3 giờ qua",
+        "now-24h": "24 giờ qua",
+    }
+    win = st.session_state["filter_window"]
+    parts: list = [f"`{_window_labels.get(win, win)}`"]
     if st.session_state.get("selected_route_no"):
-        parts.append(f"route_no=`{st.session_state['selected_route_no']}`")
+        parts.append(f"tuyến=`{st.session_state['selected_route_no']}`")
     if st.session_state.get("selected_plate_no"):
-        parts.append(f"plate=`{st.session_state['selected_plate_no']}`")
+        parts.append(f"biển số=`{st.session_state['selected_plate_no']}`")
     ign = st.session_state.get("filter_ignition", "—")
     if ign != "—":
-        parts.append(f"ignition=`{ign}`")
+        parts.append(f"nổ máy=`{ign}`")
     s_min = st.session_state.get("filter_speed_min", 0)
     s_max = st.session_state.get("filter_speed_max", 80)
     if s_min > 0 or s_max < 120:
-        parts.append(f"speed=`{s_min}–{s_max}`")
+        parts.append(f"tốc độ=`{s_min}–{s_max}`")
     return " · ".join(parts)
 
 
@@ -209,12 +226,20 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
     fc1, fc2, fc3, fc4 = st.columns([1, 1, 2, 0.6])
 
     with fc1:
+        _window_options = ["now-15m", "now-30m", "now-1h", "now-3h", "now-24h"]
+        _window_labels = {
+            "now-15m": "15 phút qua",
+            "now-30m": "30 phút qua",
+            "now-1h":  "1 giờ qua",
+            "now-3h":  "3 giờ qua",
+            "now-24h": "24 giờ qua",
+        }
         st.session_state["filter_window"] = st.selectbox(
             "Cửa sổ thời gian",
-            options=["now-15m", "now-30m", "now-1h", "now-3h", "now-24h"],
-            index=["now-15m", "now-30m", "now-1h", "now-3h", "now-24h"].index(
-                st.session_state["filter_window"]),
-            help="Áp clause `range` lên @timestamp",
+            options=_window_options,
+            index=_window_options.index(st.session_state["filter_window"]),
+            format_func=lambda v: _window_labels.get(v, v),
+            help="Áp mệnh đề `range` lên @timestamp",
         )
 
     with fc2:
@@ -223,7 +248,7 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
             options=["—", "Đang nổ máy", "Đã tắt máy"],
             index=["—", "Đang nổ máy", "Đã tắt máy"].index(
                 st.session_state["filter_ignition"]),
-            help="Áp clause `term` lên field `ignition` (boolean)",
+            help="Áp mệnh đề `term` lên trường `ignition` (boolean)",
         )
 
     with fc3:
@@ -232,7 +257,7 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
             min_value=0, max_value=120,
             value=(st.session_state["filter_speed_min"],
                    st.session_state["filter_speed_max"]),
-            help="Áp clause `range` lên field `speed`",
+            help="Áp mệnh đề `range` lên trường `speed`",
         )
         st.session_state["filter_speed_min"] = speed_min
         st.session_state["filter_speed_max"] = speed_max
@@ -245,6 +270,40 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
             st.session_state["filter_speed_min"] = 0
             st.session_state["filter_speed_max"] = 80
             st.rerun()
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # Hàng 3 — "Tìm gần một điểm" (gộp từ trang Tìm gần tôi)
+    # ══════════════════════════════════════════════════════════════════════════
+    def _on_nb_toggle() -> None:
+        # When the radius-filter toggle flips ON, auto-request GPS so the user
+        # doesn't have to click "Dùng vị trí của tôi" separately.
+        if st.session_state.get("nb_enabled"):
+            st.session_state["_loc_pending"] = True
+            st.session_state.pop("_loc_err", None)
+            st.session_state.pop("_loc_ok", None)
+
+    nb_on = st.toggle(
+        "Bật chế độ lọc theo bán kính",
+        key="nb_enabled",
+        on_change=_on_nb_toggle,
+        help="Khi bật, bản đồ chỉ hiện xe (và tuỳ chọn cụm trạm) trong bán kính "
+             "quanh điểm chọn. Các bộ lọc tuyến/biển số/nổ máy/tốc độ/cửa sổ "
+             "vẫn áp dụng song song. Tự động lấy vị trí trình duyệt khi bật.",
+    )
+    if nb_on:
+        _handle_geolocation()
+        _location_controls()
+        nc1, nc2, nc3, nc4 = st.columns([2, 2, 3, 2])
+        nc1.number_input("Vĩ độ (lat)", format="%.6f", step=0.0001, key="nb_lat")
+        nc2.number_input("Kinh độ (lon)", format="%.6f", step=0.0001, key="nb_lon")
+        nc3.slider("Bán kính (m)", min_value=100, max_value=3000,
+                   step=50, key="nb_radius")
+        nc4.checkbox("Hiển thị cụm trạm", key="nb_show_stops")
+        st.caption(
+            "💡 Tự động lấy vị trí trình duyệt khi bật. Nếu bị từ chối, "
+            "mặc định Bến Thành (10.7769, 106.7009) — có thể bấm "
+            "\"📍 Dùng vị trí của tôi\" để thử lại."
+        )
 
     # ══════════════════════════════════════════════════════════════════════════
     # Selected route banner + clear button
@@ -298,8 +357,6 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
         elif search_data is not None:
             st.info(f"Không tìm thấy tuyến nào phù hợp với: **{search_term}**")
 
-    st.markdown("---")
-
     # ══════════════════════════════════════════════════════════════════════════
     # Live map + route detail (2 cột)
     # ══════════════════════════════════════════════════════════════════════════
@@ -308,14 +365,10 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
     with col_map:
         # Selectbox chọn chu kỳ auto-refresh (đặt ngoài fragment để re-định nghĩa
         # fragment với run_every mới mỗi khi đổi giá trị)
-        head_col, sel_col = st.columns([7, 2])
-        with head_col:
-            st.markdown('<div class="section-header">📍 Vị trí xe buýt</div>',
-                        unsafe_allow_html=True)
+        _, sel_col = st.columns([7, 2])
         with sel_col:
-            st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
             interval_label = st.selectbox(
-                "Tự refresh",
+                "Tự làm mới",
                 options=["Tắt", "5 giây", "10 giây", "30 giây", "60 giây"],
                 index=1,
                 label_visibility="collapsed",
@@ -328,28 +381,44 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
         @st.fragment(run_every=f"{_refresh_sec}s" if _refresh_sec else None)
         def render_live_map():
             last_refresh = pd.Timestamp.now().strftime("%H:%M:%S")
-            suffix = (f" · auto {_refresh_sec}s" if _refresh_sec
-                      else " · không auto-refresh")
+            suffix = (f" · tự làm mới {_refresh_sec}s" if _refresh_sec
+                      else " · không tự làm mới")
+            nb_on = bool(st.session_state.get("nb_enabled"))
             st.caption(f"🕐 Cập nhật lần cuối: **{last_refresh}**{suffix}")
+            filter_parts = _filter_summary()
+            if nb_on:
+                filter_parts += f" · bán kính=`{st.session_state['nb_radius']} m`"
+            st.caption(f"🔎 Bộ lọc: {filter_parts}")
 
-            params_pos = _build_livebus_params()
-            pos_data = api_get("/api/livebus", params_pos)
+            if nb_on:
+                nb_lat = float(st.session_state["nb_lat"])
+                nb_lon = float(st.session_state["nb_lon"])
+                nb_r   = int(st.session_state["nb_radius"])
+                # Reuse livebus filter set + add radius params
+                params_pos = _build_livebus_params()
+                params_pos.update({"lat": nb_lat, "lon": nb_lon, "radius_m": nb_r})
+                pos_data = api_get("/api/nearby_buses", params_pos)
+            else:
+                params_pos = _build_livebus_params()
+                pos_data = api_get("/api/livebus", params_pos)
 
-            if not pos_data or not pos_data.get("features"):
+            features = (pos_data.get("features") if pos_data else None) or []
+
+            if not features and not nb_on:
                 st.info("Không có dữ liệu vị trí xe khớp bộ lọc.")
                 return
 
-            clauses = pos_data.get("filter_clauses_count", 0)
-            took    = pos_data.get("took", 0)
-            count   = pos_data.get("count", len(pos_data["features"]))
+            count = (pos_data.get("count", len(features)) if pos_data else 0)
 
-            k1, k2, k3 = st.columns(3)
-            k1.metric("Xe khớp",        f"{count}")
-            k2.metric("Filter clauses", f"{clauses}")
-            k3.metric("Took",           f"{took} ms")
+            if nb_on:
+                k1, k2 = st.columns(2)
+                k1.metric("Xe khớp", f"{count}")
+                k2.metric("Bán kính", f"{st.session_state['nb_radius']} m")
+            else:
+                st.metric("Xe khớp", f"{count}")
 
             points = []
-            for f in pos_data["features"]:
+            for f in features:
                 p = f["properties"]
                 points.append({
                     "lat":        p["lat"],
@@ -360,45 +429,111 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
                     "route_name": p.get("route_name", ""),
                     "plate_no":   p.get("plate_no", "") or p.get("vehicle", ""),
                     "timestamp":  p.get("timestamp", ""),
+                    "distance_m": p.get("distance_m", 0),
                 })
             df_pos = pd.DataFrame(points)
-            df_pos["color"] = df_pos["speed"].apply(speed_color)
+            if not df_pos.empty:
+                df_pos["color"] = df_pos["speed"].apply(speed_color)
 
-            scatter_layer = pdk.Layer(
-                "ScatterplotLayer",
-                data=df_pos,
-                get_position=["lon", "lat"],
-                get_fill_color="color",
-                get_radius=80,
-                pickable=True,
-                auto_highlight=True,
-                radius_min_pixels=4,
-                radius_max_pixels=16,
-            )
-            view_state = pdk.ViewState(latitude=10.78, longitude=106.66,
-                                       zoom=11, pitch=0)
+            layers: List[pdk.Layer] = []
+
+            if nb_on:
+                # Circle (behind) + center marker (above buses)
+                layers.append(pdk.Layer(
+                    "PolygonLayer",
+                    data=[{"polygon": circle_polygon(nb_lat, nb_lon, nb_r)}],
+                    get_polygon="polygon",
+                    get_fill_color=[0, 179, 164, 25],
+                    get_line_color=[0, 179, 164, 220],
+                    line_width_min_pixels=2,
+                    pickable=False, stroked=True, filled=True,
+                ))
+
+            if not df_pos.empty:
+                layers.append(pdk.Layer(
+                    "ScatterplotLayer",
+                    data=df_pos,
+                    get_position=["lon", "lat"],
+                    get_fill_color="color",
+                    get_radius=80,
+                    pickable=True,
+                    auto_highlight=True,
+                    radius_min_pixels=4,
+                    radius_max_pixels=16,
+                ))
+
+            if nb_on and st.session_state.get("nb_show_stops"):
+                stop_data = api_get("/api/nearby_stops", {
+                    "lat": nb_lat, "lon": nb_lon, "radius_m": nb_r,
+                    "from": st.session_state["filter_window"], "to": "now+3h",
+                })
+                if stop_data and stop_data.get("features"):
+                    stop_rows = [{
+                        "lat":        sf["properties"]["lat"],
+                        "lon":        sf["properties"]["lon"],
+                        "pings":      sf["properties"].get("pings", 0),
+                        "vehicles":   sf["properties"].get("vehicles", 0),
+                        "routes":     ", ".join(sf["properties"].get("routes") or []),
+                        "distance_m": sf["properties"].get("distance_m", 0),
+                    } for sf in stop_data["features"]]
+                    layers.append(pdk.Layer(
+                        "ScatterplotLayer",
+                        data=stop_rows,
+                        get_position=["lon", "lat"],
+                        get_fill_color=[168, 85, 247, 220],
+                        get_line_color=[255, 255, 255, 255],
+                        line_width_min_pixels=1,
+                        get_radius=40,
+                        radius_min_pixels=5, radius_max_pixels=12,
+                        stroked=True, pickable=True,
+                    ))
+
+            if nb_on:
+                # Center marker on top
+                layers.append(pdk.Layer(
+                    "ScatterplotLayer",
+                    data=[{"lat": nb_lat, "lon": nb_lon}],
+                    get_position=["lon", "lat"],
+                    get_fill_color=[59, 130, 246, 240],
+                    get_line_color=[255, 255, 255, 255],
+                    line_width_min_pixels=2,
+                    get_radius=20,
+                    radius_min_pixels=8, radius_max_pixels=14,
+                    stroked=True, pickable=False,
+                ))
+                zoom = max(11.0, 17.0 - math.log2(max(nb_r, 50) / 50.0))
+                view_state = pdk.ViewState(latitude=nb_lat, longitude=nb_lon,
+                                           zoom=zoom, pitch=0)
+            else:
+                view_state = pdk.ViewState(latitude=10.78, longitude=106.66,
+                                           zoom=11, pitch=0)
+
+            tooltip_html = """
+                <div style='font-family:Inter,sans-serif; padding:8px;
+                            background:#ffffff; border-radius:8px;
+                            border:1px solid #d6d6d2; color:#0f172a;
+                            font-size:13px;
+                            box-shadow:0 4px 16px rgba(15,23,42,0.12);'>
+                    <b style='color:#0d9488'>🚌 {plate_no}</b><br>
+                    🗺 Tuyến {route_no}: {route_name}<br>
+                    🚀 Tốc độ: <b>{speed} km/h</b><br>
+            """
+            if nb_on:
+                tooltip_html += "📏 Cách: <b>{distance_m} m</b><br>"
+            tooltip_html += "🕐 {timestamp}</div>"
             tooltip = {
-                "html": """
-                    <div style='font-family:Inter,sans-serif; padding:8px;
-                                background:#ffffff; border-radius:8px;
-                                border:1px solid #d6d6d2; color:#0f172a;
-                                font-size:13px;
-                                box-shadow:0 4px 16px rgba(15,23,42,0.12);'>
-                        <b style='color:#0d9488'>🚌 {plate_no}</b><br>
-                        🗺 Tuyến {route_no}: {route_name}<br>
-                        🚀 Tốc độ: <b>{speed} km/h</b><br>
-                        🕐 {timestamp}
-                    </div>
-                """,
+                "html": tooltip_html,
                 "style": {"backgroundColor": "transparent", "border": "none"},
             }
 
             st.pydeck_chart(
-                pdk.Deck(layers=[scatter_layer], initial_view_state=view_state,
-                         tooltip=tooltip, map_style=None),
+                pdk.Deck(layers=layers, initial_view_state=view_state,
+                         tooltip=tooltip,
+                         map_style="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"),
                 height=460,
             )
-            st.caption("Màu chấm: 🟢 chậm → 🔴 nhanh")
+            st.caption("Màu chấm: 🟢 chậm → 🔴 nhanh"
+                       + (" · 🟣 cụm trạm · 🔵 điểm trung tâm" if nb_on else ""))
 
         render_live_map()
 
@@ -425,8 +560,6 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
                     ):
                         _render_route_card(route)
 
-    st.markdown("---")
-
     # ══════════════════════════════════════════════════════════════════════════
     # Aggregation panel — /api/stats (manual refresh, không auto-refresh)
     # ══════════════════════════════════════════════════════════════════════════
@@ -434,7 +567,7 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
     def render_stats():
         head_col, btn_col = st.columns([8, 1.2])
         with head_col:
-            st.markdown('<div class="section-header">📊 Thống kê (Aggregation)</div>',
+            st.markdown('<div class="section-header">📊 Thống kê tổng hợp</div>',
                         unsafe_allow_html=True)
         with btn_col:
             st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
@@ -456,13 +589,13 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
                 "Xe đang hoạt động",
                 f"{d['vehicles_active']:,}",
                 help="Số xe DUY NHẤT có ít nhất 1 bản ghi GPS trong cửa sổ. "
-                     "Aggregation: cardinality(vehicle).",
+                     "Tổng hợp: cardinality(vehicle).",
             )
             c2.metric(
                 "Tuyến đang chạy",
                 f"{d['routes_in_use']:,}",
                 help="Số tuyến DUY NHẤT có xe vận hành trong cửa sổ. "
-                     "Aggregation: cardinality(route_no).",
+                     "Tổng hợp: cardinality(route_no).",
             )
             if jam_data and jam_data.get("data"):
                 c3.metric(
@@ -470,25 +603,25 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
                     f"{jam_data['data']['jam_pct']}%",
                     help="% bản tin GPS có vận tốc < 5 km/h trong cửa sổ. "
                          "Đại diện cho mức độ ùn tắc + dừng đèn đỏ + dừng "
-                         "trạm. Aggregation: range(speed) chia 4 nhóm "
-                         "jam/slow/normal/fast rồi lấy tỷ lệ jam/total.",
+                         "trạm. Tổng hợp: range(speed) chia 4 nhóm "
+                         "kẹt/chậm/bình thường/nhanh rồi lấy tỷ lệ kẹt/tổng.",
                 )
             else:
                 c3.metric("Tỷ lệ kẹt xe", "—")
             c4.metric(
-                "Took",
+                "Thời gian",
                 f"{kpi_data.get('took', 0)} ms",
-                help="Thời gian Elasticsearch xử lý query (took field). "
-                     "Đo nội bộ ES, không bao gồm network round-trip.",
+                help="Thời gian Elasticsearch xử lý truy vấn (trường took). "
+                     "Đo nội bộ ES, không bao gồm độ trễ mạng.",
             )
         else:
             st.warning("Backend chưa trả dữ liệu thống kê.")
 
         # ── Top N tuyến ────────────────────────────────────────────────────
         top_size = st.slider(
-            "Top N tuyến", 3, 20, 5, step=1, key="stats_top_size",
-            help="Tham số `size` của terms aggregation. ES sẽ trả N tuyến có "
-                 "nhiều xe nhất. N nhỏ = dashboard gọn; N lớn = thấy "
+            "Số tuyến hiển thị", 3, 20, 5, step=1, key="stats_top_size",
+            help="Tham số `size` của tổng hợp terms. ES sẽ trả N tuyến có "
+                 "nhiều xe nhất. N nhỏ = bảng gọn; N lớn = thấy "
                  "phân bố rộng hơn.",
         )
 
@@ -501,8 +634,8 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
             with cc1:
                 _chart_label(
                     f"📊 Top {top_size} tuyến theo số xe đang vận hành",
-                    f"Aggregation: terms(route_no) size={top_size} order _count desc, "
-                    f"sub-agg cardinality(vehicle) lấy số xe duy nhất. "
+                    f"Tổng hợp: terms(route_no) size={top_size} sắp xếp _count giảm dần, "
+                    f"tổng hợp con cardinality(vehicle) lấy số xe duy nhất. "
                     f"Tuyến đông xe = tuyến hoạt động sôi nổi nhất.",
                     took_ms=top_data.get("took", 0),
                 )
@@ -512,32 +645,32 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
                 _chart_label(
                     "🚌 Số xe + Tốc độ mỗi tuyến",
                     "Cột Xe = cardinality(vehicle) — số xe duy nhất. "
-                    "Avg/Max = avg/max(speed) lồng trong terms bucket. "
-                    "Tất cả metric tính trên cùng tập document đã lọc.",
+                    "TB/Tối đa = avg/max(speed) lồng trong nhóm terms. "
+                    "Tất cả chỉ số tính trên cùng tập bản ghi đã lọc.",
                 )
                 display_df = df_top[["route_no", "vehicles",
                                      "avg_speed", "max_speed"]].rename(columns={
                     "route_no":  "Tuyến",
                     "vehicles":  "Xe",
-                    "avg_speed": "Avg",
-                    "max_speed": "Max",
+                    "avg_speed": "TB",
+                    "max_speed": "Tối đa",
                 })
                 st.dataframe(display_df, hide_index=True,
                              use_container_width=True, height=300)
         else:
-            st.info("Không có dữ liệu top routes.")
+            st.info("Không có dữ liệu tuyến đứng đầu.")
 
         # ── Hàng 2: pings_per_min — số xe phân theo trạng thái di chuyển ──
         pm = api_get("/api/stats", {**base_params, "metric": "pings_per_min",
                                     "interval": "1m"})
         _chart_label(
             "📈 Số xe duy nhất theo phút — phân theo trạng thái",
-            "Aggregation: date_histogram interval=1m → terms(vehicle) → "
+            "Tổng hợp: date_histogram interval=1m → terms(vehicle) → "
             "max(speed). Mỗi xe được phân đúng 1 nhóm theo MAX(speed) trong "
-            "phút (mutually exclusive): "
+            "phút (không trùng lặp): "
             "'Đang di chuyển' = max ≥ 5 km/h; "
             "'Dừng/đỗ' = max < 5 km/h hoặc speed=null (đèn đỏ, dừng trạm, "
-            "đỗ depot heartbeat). Tổng 2 nhóm = số xe duy nhất.",
+            "đỗ tại bến phát tín hiệu). Tổng 2 nhóm = số xe duy nhất.",
             took_ms=pm.get("took", 0) if pm else 0,
         )
         if pm and pm.get("data"):
@@ -547,7 +680,7 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
             chart_df = df_pm.set_index("ts")[
                 ["active_vehicles", "moving", "stopped"]
             ].rename(columns={
-                "active_vehicles": "Tổng xe online",
+                "active_vehicles": "Tổng xe trực tuyến",
                 "moving":          "Đang di chuyển (≥5 km/h)",
                 "stopped":         "Dừng/đỗ (<5 km/h)",
             })
@@ -558,8 +691,8 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
             moving_pct = (last["moving"] / last["active_vehicles"] * 100
                           if last["active_vehicles"] else 0)
             st.caption(
-                f"⚙ took = {pm.get('took', 0)} ms · interval 1m · "
-                f"phút mới nhất: {int(last['active_vehicles'])} xe online "
+                f"⚙ thời gian = {pm.get('took', 0)} ms · bước 1 phút · "
+                f"phút mới nhất: {int(last['active_vehicles'])} xe trực tuyến "
                 f"({int(last['moving'])} đang chạy — {moving_pct:.1f}%, "
                 f"{int(last['stopped'])} dừng/đỗ)"
             )
@@ -574,11 +707,11 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
             sh = api_get("/api/stats", sh_params)
             _chart_label(
                 "🕐 Tốc độ trung bình theo giờ trong 24h gần nhất",
-                "Aggregation: date_histogram calendar_interval=1h + "
+                "Tổng hợp: date_histogram calendar_interval=1h + "
                 "avg(speed, missing=0). Cửa sổ 24h cố định (không theo "
-                "filter row). missing=0 nghĩa là ping không có field speed "
-                "(xe đỗ tại depot, GPS minimal payload mode) được tính "
-                "như speed=0. Vì vậy fleet avg phản ánh đầy đủ: giờ vận "
+                "hàng lọc). missing=0 nghĩa là bản tin không có trường speed "
+                "(xe đỗ tại bến, gói GPS tối giản) được tính "
+                "như speed=0. Vì vậy trung bình toàn đoàn phản ánh đầy đủ: giờ vận "
                 "hành ~20 km/h, giờ xe đỗ tụt gần 0.",
                 took_ms=sh.get("took", 0) if sh else 0,
             )
@@ -586,9 +719,9 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
                 df_sh = pd.DataFrame(sh["data"])
                 df_sh["ts"] = pd.to_datetime(df_sh["ts"])
                 chart_df = df_sh.set_index("ts")[["avg_speed"]].rename(
-                    columns={"avg_speed": "Avg km/h"})
+                    columns={"avg_speed": "TB km/h"})
                 st.line_chart(chart_df, height=260, color="#0d9488")
-                st.caption(f"⚙ took = {sh.get('took', 0)} ms · interval 1h "
+                st.caption(f"⚙ thời gian = {sh.get('took', 0)} ms · bước 1 giờ "
                            f"· missing=0 (xe đỗ tính như đứng yên)")
             else:
                 st.info("Không có dữ liệu.")
@@ -598,11 +731,11 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
                                          "size": 5})
             _chart_label(
                 "🚧 Top tuyến kẹt nhất (% bản ghi speed < 5 km/h)",
-                "Aggregation pipeline: terms(route_no) size=50 + filter "
-                "speed<5 + bucket_script tính jam_pct = jam/total + "
-                "bucket_sort sort jam_pct desc. Lấy top 50 tuyến đông xe "
-                "trước rồi mới sort theo jam_pct (tránh tuyến nhỏ <100 "
-                "ping bị nhiễu).",
+                "Tổng hợp dạng pipeline: terms(route_no) size=50 + lọc "
+                "speed<5 + bucket_script tính jam_pct = kẹt/tổng + "
+                "bucket_sort sắp xếp jam_pct giảm dần. Lấy 50 tuyến đông xe "
+                "trước rồi mới sắp xếp theo jam_pct (tránh tuyến nhỏ <100 "
+                "bản tin bị nhiễu).",
                 took_ms=tjr.get("took", 0) if tjr else 0,
             )
             if tjr and tjr.get("data"):
@@ -613,7 +746,7 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
                     "route_name": "Tên tuyến",
                     "vehicles":   "Xe",
                     "jam_pct":    "% Kẹt",
-                    "avg_speed":  "Avg km/h",
+                    "avg_speed":  "TB km/h",
                 })
                 st.dataframe(df_show, hide_index=True,
                              use_container_width=True, height=240)
