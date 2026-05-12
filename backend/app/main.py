@@ -13,7 +13,16 @@ Docs:
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import fuzzysearch, livebus, platesearch, routedetail, stats, filterbus
+from .routers import (
+    activity,
+    filterbus,
+    fuzzysearch,
+    livebus,
+    nearby,
+    platesearch,
+    routedetail,
+    stats,
+)
 from .core.es_client import get_es, get_index, ES_HOST
 
 app = FastAPI(
@@ -43,6 +52,8 @@ app.include_router(platesearch.router, prefix="/api", tags=["PlateSearch"])
 app.include_router(routedetail.router, prefix="/api", tags=["RouteDetail"])
 app.include_router(stats.router,       prefix="/api", tags=["Stats (Aggregation)"])
 app.include_router(filterbus.router,   prefix="/api", tags=["Filter"])
+app.include_router(nearby.router,      prefix="/api", tags=["Nearby"])
+app.include_router(activity.router,    prefix="/api", tags=["Activity"])
 
 
 # ── Health ─────────────────────────────────────────────────────────────────────
@@ -84,6 +95,10 @@ def root():
             "/api/routedetail",
             "/api/stats",
             "/api/filter",
+            "/api/nearby_buses",
+            "/api/nearby_stops",
+            "/api/most_active_bus",
+            "/api/bus_track",
         ],
         "stats_metrics": [
             "top_routes", "top_jam_routes", "traffic_jam",
