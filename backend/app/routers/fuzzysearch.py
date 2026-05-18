@@ -37,15 +37,7 @@ def fuzzy_search(
         """Return [num, zero-padded] so "3" matches "03" and vice versa."""
         return list({num, num.zfill(2)})
 
-    if q_clean.isdigit():
-        # "88" hoặc "3" → match cả "3" lẫn "03"
-        query = {"terms": {"route_no": route_no_candidates(q_clean)}}
-
-    elif number_match and not only_text:
-        # "tuyến 88", "số 3" → match cả dạng có và không có leading zero
-        query = {"terms": {"route_no": route_no_candidates(number_match.group(1))}}
-
-    elif number_match and only_text:
+    if number_match and only_text:
         # "tuyến 88 chợ rẫy" → filter by route_no + fuzzy match stop
         query = {
             "bool": {
@@ -66,6 +58,12 @@ def fuzzy_search(
         query = {
             "bool": {
                 "should": [
+                    {"match_phrase_prefix": {"route_name":    {"query": q_clean, "boost": 8}}},
+                    {"match_phrase_prefix": {"stops_forward": {"query": q_clean, "boost": 6}}},
+                    {"match_phrase_prefix": {"stops_return":  {"query": q_clean, "boost": 6}}},
+                    {"match_phrase": {"stops_forward": {"query": q_clean, "boost": 5}}},
+                    {"match_phrase": {"stops_return":  {"query": q_clean, "boost": 5}}},
+                    {"match_phrase": {"route_name":    {"query": q_clean, "boost": 5}}},
                     {"match": {"route_name":    {"query": q_clean, "fuzziness": "AUTO", "prefix_length": 1, "boost": 2}}},
                     {"match": {"stops_forward": {"query": q_clean, "fuzziness": "AUTO", "prefix_length": 1}}},
                     {"match": {"stops_return":  {"query": q_clean, "fuzziness": "AUTO", "prefix_length": 1}}},

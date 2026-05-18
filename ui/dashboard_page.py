@@ -221,6 +221,58 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
             st.rerun()
 
     # ══════════════════════════════════════════════════════════════════════════
+    # Search results as cards
+    # ══════════════════════════════════════════════════════════════════════════
+    if search_term and search_term.strip() and not st.session_state["selected_route_no"]:
+        search_data = api_get("/api/fuzzysearch", {"q": search_term, "size": 10})
+        if search_data and search_data.get("data"):
+            total = search_data["total"]
+            shown = len(search_data["data"])
+            suffix = f" (hiển thị {shown})" if total > shown else ""
+            st.markdown(
+                f"<div class='result-count'>{total} tuyến tìm thấy{suffix}</div>",
+                unsafe_allow_html=True,
+            )
+            for r in search_data["data"]:
+                route_no   = r.get("route_no", "")
+                route_name = r.get("route_name", "")
+                stop       = r.get("matched_stop", "")
+                color = ("green" if route_no == st.session_state["selected_route_no"]
+                         else "blue")
+                card_label = (
+                    f":{color}[**{route_no}**]   {route_name}"
+                    + (f"\n\n:gray[📍 *{stop}*]" if stop else "")
+                )
+                if st.button(card_label, key=f"sel_{route_no}",
+                             use_container_width=True):
+                    st.session_state["selected_route_no"]   = route_no
+                    st.session_state["selected_route_name"] = route_name
+                    st.session_state["selected_plate_no"]  = ""
+                    st.rerun()
+        elif search_data is not None:
+            st.info(f"Không tìm thấy tuyến nào phù hợp với: **{search_term}**")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # Selected route banner + clear button
+    # ══════════════════════════════════════════════════════════════════════════
+    selected_no   = st.session_state["selected_route_no"]
+    selected_name = st.session_state["selected_route_name"]
+    if selected_no:
+        col_banner, col_clear = st.columns([7, 1])
+        with col_banner:
+            st.markdown(
+                f"<div class='selected-banner'>🗺 Đang lọc: <b>Tuyến {selected_no}</b>"
+                + (f" — {selected_name}" if selected_name else "") + "</div>",
+                unsafe_allow_html=True,
+            )
+        with col_clear:
+            if st.button("✕ Bỏ lọc", use_container_width=True):
+                st.session_state["selected_route_no"] = ""
+                st.session_state["selected_route_name"] = ""
+                st.session_state["selected_plate_no"] = ""
+                st.rerun()
+
+    # ══════════════════════════════════════════════════════════════════════════
     # Hàng 2 — Bộ lọc nâng cao (luôn hiển thị, không wrap expander)
     # ══════════════════════════════════════════════════════════════════════════
     fc1, fc2, fc3, fc4 = st.columns([1, 1, 2, 0.6])
@@ -304,58 +356,6 @@ def render_dashboard_page(api_get: ApiGet, speed_color: SpeedColor) -> None:
             "mặc định Bến Thành (10.7769, 106.7009) — có thể bấm "
             "\"📍 Dùng vị trí của tôi\" để thử lại."
         )
-
-    # ══════════════════════════════════════════════════════════════════════════
-    # Selected route banner + clear button
-    # ══════════════════════════════════════════════════════════════════════════
-    selected_no   = st.session_state["selected_route_no"]
-    selected_name = st.session_state["selected_route_name"]
-    if selected_no:
-        col_banner, col_clear = st.columns([7, 1])
-        with col_banner:
-            st.markdown(
-                f"<div class='selected-banner'>🗺 Đang lọc: <b>Tuyến {selected_no}</b>"
-                + (f" — {selected_name}" if selected_name else "") + "</div>",
-                unsafe_allow_html=True,
-            )
-        with col_clear:
-            if st.button("✕ Bỏ lọc", use_container_width=True):
-                st.session_state["selected_route_no"] = ""
-                st.session_state["selected_route_name"] = ""
-                st.session_state["selected_plate_no"] = ""
-                st.rerun()
-
-    # ══════════════════════════════════════════════════════════════════════════
-    # Search results as cards
-    # ══════════════════════════════════════════════════════════════════════════
-    if search_term and search_term.strip() and not st.session_state["selected_route_no"]:
-        search_data = api_get("/api/fuzzysearch", {"q": search_term, "size": 10})
-        if search_data and search_data.get("data"):
-            total = search_data["total"]
-            shown = len(search_data["data"])
-            suffix = f" (hiển thị {shown})" if total > shown else ""
-            st.markdown(
-                f"<div class='result-count'>{total} tuyến tìm thấy{suffix}</div>",
-                unsafe_allow_html=True,
-            )
-            for r in search_data["data"]:
-                route_no   = r.get("route_no", "")
-                route_name = r.get("route_name", "")
-                stop       = r.get("matched_stop", "")
-                color = ("green" if route_no == st.session_state["selected_route_no"]
-                         else "blue")
-                card_label = (
-                    f":{color}[**{route_no}**]   {route_name}"
-                    + (f"\n\n:gray[📍 *{stop}*]" if stop else "")
-                )
-                if st.button(card_label, key=f"sel_{route_no}",
-                             use_container_width=True):
-                    st.session_state["selected_route_no"]   = route_no
-                    st.session_state["selected_route_name"] = route_name
-                    st.session_state["selected_plate_no"]  = ""
-                    st.rerun()
-        elif search_data is not None:
-            st.info(f"Không tìm thấy tuyến nào phù hợp với: **{search_term}**")
 
     # ══════════════════════════════════════════════════════════════════════════
     # Live map + route detail (2 cột)

@@ -40,17 +40,30 @@ st.markdown("""
 <style>
 [data-testid="stAppViewContainer"], [data-testid="stMain"] { background: #ebeef2; }
 
-button[data-testid="stBaseButton-secondary"],
-button[data-testid="stBaseButton-primary"],
-.stButton > button,
-div[data-testid="stButton"] > button {
-    justify-content: flex-start !important;
+div[data-testid="stButton"] button,
+.stButton button,
+button[kind="secondary"],
+button[data-testid="baseButton-secondary"] {
+    display: block !important;
     text-align: left !important;
     padding-left: 16px !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    width: 100% !important;
 }
-button[data-testid="stBaseButton-secondary"] > div,
-.stButton > button > div { text-align: left !important; width: 100% !important; }
-.stButton > button p { text-align: left !important; white-space: pre-wrap !important; }
+div[data-testid="stButton"] button > div,
+.stButton button > div,
+button[kind="secondary"] > div,
+button[data-testid="baseButton-secondary"] > div,
+div[data-testid="stButton"] button p,
+.stButton button p,
+button[kind="secondary"] p,
+button[data-testid="baseButton-secondary"] p {
+    display: block !important;
+    text-align: left !important;
+    width: 100% !important;
+    margin: 0 !important;
+}
 
 /* ── Sidebar: aggressively tighten Streamlit's default top padding ── */
 [data-testid="stSidebarHeader"] {
