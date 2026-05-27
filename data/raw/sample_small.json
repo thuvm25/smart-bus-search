@@ -1,0 +1,134 @@
+[
+  {
+    "_comment": "Đầy đủ: speed + aircon + working + driver",
+    "msgType": "MsgType_BusWayPoint",
+    "msgBusWayPoint": {
+      "vehicle": "e738d8470a8d11a7a6d3dd7741f295c0dc3fd6779ed9d76ea7325fd1ee277891",
+      "driver": "88917658b5bff2e1b39bad7d467543609a050fd86e02bd71708230d0f7a24769",
+      "speed": 13.0,
+      "datetime": 1742712445,
+      "x": 106.659233,
+      "y": 10.750546,
+      "ignition": true,
+      "aircon": true,
+      "working": true
+    }
+  },
+  {
+    "_comment": "Xe dừng trạm: door_up + door_down mở",
+    "msgType": "MsgType_BusWayPoint",
+    "msgBusWayPoint": {
+      "vehicle": "5f167b330be3da64ffd55e6f844a2071d1e6cf0b1469ab1bcab979add01208aa",
+      "driver": "88917658b5bff2e1b39bad7d467543609a050fd86e02bd71708230d0f7a24769",
+      "speed": 1.0,
+      "datetime": 1742712445,
+      "x": 106.728355,
+      "y": 10.833566,
+      "ignition": true,
+      "aircon": true,
+      "door_up": true,
+      "door_down": true
+    }
+  },
+  {
+    "_comment": "Tối giản: chỉ có vị trí + ignition",
+    "msgType": "MsgType_BusWayPoint",
+    "msgBusWayPoint": {
+      "vehicle": "ba12fcfd1a4af9b841a7988d175e5ffbfa86a61e970c2f6bb685553808d18cd8",
+      "driver": "88917658b5bff2e1b39bad7d467543609a050fd86e02bd71708230d0f7a24769",
+      "datetime": 1742712452,
+      "x": 106.668915,
+      "y": 10.805684,
+      "ignition": true
+    }
+  },
+  {
+    "_comment": "Có ignition + aircon, không có speed",
+    "msgType": "MsgType_BusWayPoint",
+    "msgBusWayPoint": {
+      "vehicle": "ecfa8cf0366fae7b39a7f2548d30af2d9f9fd1c40ecbc0142baaaea12108b192",
+      "driver": "88917658b5bff2e1b39bad7d467543609a050fd86e02bd71708230d0f7a24769",
+      "datetime": 1742712451,
+      "x": 106.712242,
+      "y": 10.809879,
+      "ignition": true,
+      "aircon": true
+    }
+  },
+  {
+    "_comment": "Có ignition + door, không có driver",
+    "msgType": "MsgType_BusWayPoint",
+    "msgBusWayPoint": {
+      "vehicle": "d663780cf4a0f8fafa7fb9f2a42dda8baceacf6e09a3c883f250194ee6475a8f",
+      "datetime": 1742712442,
+      "x": 106.639099,
+      "y": 10.705637,
+      "ignition": true,
+      "door_up": true,
+      "door_down": true
+    }
+  },
+  {
+    "_comment": "Đang chạy nhanh 33 km/h",
+    "msgType": "MsgType_BusWayPoint",
+    "msgBusWayPoint": {
+      "vehicle": "b79cc3e2878a8802acb9bcb5f7ffc5e5e220d9a12c72ad53334bd187cfd2f258",
+      "driver": "88917658b5bff2e1b39bad7d467543609a050fd86e02bd71708230d0f7a24769",
+      "speed": 33.0,
+      "datetime": 1742712446,
+      "x": 106.668625,
+      "y": 10.808031,
+      "ignition": true,
+      "aircon": true
+    }
+  },
+  {
+    "_comment": "Có heading (hướng di chuyển) + speed, không có driver",
+    "msgType": "MsgType_BusWayPoint",
+    "msgBusWayPoint": {
+      "vehicle": "74ca7b94dd01ebbfd4c34e367dfe6382ad367ffcea1d3dd653b43c0ce2b1fd5e",
+      "speed": 18.0,
+      "datetime": 1742712466,
+      "x": 106.591622,
+      "y": 10.804183,
+      "heading": 14.0,
+      "ignition": true,
+      "aircon": true
+    }
+  },
+  {
+    "_comment": "Tốc độ cao 49 km/h (đường cao tốc), không có driver",
+    "msgType": "MsgType_BusWayPoint",
+    "msgBusWayPoint": {
+      "vehicle": "10d2154ded94b97f1dfe35be24726374652f547da1c2fb02e8a88bb9a318044d",
+      "speed": 49.0,
+      "datetime": 1742712460,
+      "x": 106.724518,
+      "y": 10.798426,
+      "ignition": true,
+      "aircon": true
+    }
+  },
+  {
+    "_comment": "Chỉ có ignition + aircon, không có speed/driver",
+    "msgType": "MsgType_BusWayPoint",
+    "msgBusWayPoint": {
+      "vehicle": "26c757a4f34c5c5a060ebb4cbd633c1774ba8846c7f492adb028003490b2f01a",
+      "datetime": 1742712468,
+      "x": 106.859582,
+      "y": 10.807227,
+      "ignition": true,
+      "aircon": true
+    }
+  },
+  {
+    "_comment": "Tuyệt đối tối giản: chỉ có vị trí, không có sensor nào",
+    "msgType": "MsgType_BusWayPoint",
+    "msgBusWayPoint": {
+      "vehicle": "00ce11f64a76aa7893b5426f873294be9c81d881676e081144cf496da0f749ab",
+      "datetime": 1742712466,
+      "x": 106.689526,
+      "y": 10.767286
+    }
+  }
+]

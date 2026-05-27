@@ -9,6 +9,7 @@ venv/
 # Data (too large for git)
 data/raw/*.csv
 data/raw/*.json
+!data/raw/sample_small.json
 data/raw/data/
 data/raw/part*/
 data/processed/*.csv
@@ -39,3 +40,5 @@ es-data/
 .docs/
 
 docs/*
+!docs/sample_es_doc.json
+!docs/es_mapping.json

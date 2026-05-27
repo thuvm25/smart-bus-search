@@ -1,0 +1,39 @@
+{
+  "index": "bus_waypoints",
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  },
+  "mappings": {
+    "properties": {
+      "vehicle":   { "type": "keyword",  "description": "Mã hash xe buýt (định danh thiết bị GPS)" },
+      "driver":    { "type": "keyword",  "description": "Mã hash tài xế" },
+      "datetime":  {
+        "type": "date",
+        "format": "strict_date_optional_time||yyyy-MM-dd'T'HH:mm:ss.SSSSSSZ||yyyy-MM-dd HH:mm:ss||epoch_millis",
+        "description": "Thời điểm ghi nhận GPS, đã dịch chuyển về thời gian thực (time-shifted)"
+      },
+      "location":  { "type": "geo_point", "description": "Tọa độ GPS { lat, lon } — dùng cho map query và geo_distance" },
+      "lat":       { "type": "float",    "description": "Vĩ độ (latitude)" },
+      "lon":       { "type": "float",    "description": "Kinh độ (longitude)" },
+      "speed":     { "type": "float",    "description": "Tốc độ (km/h), optional" },
+      "heading":   { "type": "float",    "description": "Hướng di chuyển (độ), optional" },
+      "ignition":  { "type": "boolean",  "description": "Trạng thái đề máy" },
+      "aircon":    { "type": "boolean",  "description": "Trạng thái điều hòa, optional" },
+      "working":   { "type": "boolean",  "description": "Xe đang hoạt động, optional" },
+      "door_up":   { "type": "boolean",  "description": "Cửa lên mở, optional" },
+      "door_down": { "type": "boolean",  "description": "Cửa xuống mở, optional" },
+      "route_id":  { "type": "keyword",  "description": "ID tuyến nội bộ (enriched từ vehicle_route_mapping.json)" },
+      "route_no":  { "type": "keyword",  "description": "Số hiệu tuyến, ví dụ: '50', '93' (enriched)" },
+      "plate_no":  { "type": "keyword",  "description": "Biển số xe, ví dụ: '50F - 535.64' (enriched)" },
+      "route_name": {
+        "type": "text",
+        "fields": {
+          "keyword": { "type": "keyword", "ignore_above": 256 }
+        },
+        "description": "Tên tuyến đầy đủ, ví dụ: 'Bến Thành - Suối Tiên'. text → full-text search; .keyword → aggregation"
+      }
+    }
+  },
+  "_note": "Mapping này được áp dụng bởi scripts/create_index.py trước khi Logstash khởi động. Nếu Logstash chạy trước, ES sẽ tạo dynamic mapping sai (location không được nhận dạng là geo_point)."
+}

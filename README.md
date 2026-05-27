@@ -19,8 +19,14 @@ Dữ liệu gốc là dữ liệu lịch sử (~104 triệu bản ghi GPS), đư
   làm giàu dữ liệu topic:        geo_point,              └──────▶ FastAPI :8000
   tuyến đường,     bus-gps-raw   @timestamp                       /api/livebus
   dịch chuyển                    → index ES                       /api/fuzzysearch
-  thời gian                                                            │
-  → gửi Kafka                                                          ▼
+  thời gian                                                        /api/platesearch
+  → gửi Kafka                                                      /api/routedetail
+                                                                   /api/stats
+                                                                   /api/filter
+                                                                   /api/nearby_buses
+                                                                   /api/most_active_bus
+                                                                        │
+                                                                        ▼
                                                                   Streamlit :8501
                                                                   Bản đồ trực tiếp + Tìm kiếm tuyến
 ```
@@ -71,8 +77,9 @@ Docker sẽ tự động khởi động các dịch vụ theo đúng thứ tự:
 
 1. Elasticsearch & Kafka khởi động và chờ đến khi `healthy`
 2. **`init-index`** chạy `create_index.py` — tạo index `bus_waypoints` với mapping chính xác (`geo_point`, `keyword`, v.v.)
-3. Logstash bắt đầu sau khi index đã sẵn sàng — tránh xung đột Dynamic Mapping
-4. Backend, UI, Simulator khởi động song song
+3. **`init-routes`** chạy `index_routes.py` — nạp dữ liệu tuyến đường vào index `bus_routes` (phục vụ fuzzy search)
+4. Logstash bắt đầu sau khi cả hai init hoàn tất — tránh xung đột Dynamic Mapping
+5. Backend, UI, Simulator khởi động song song
 
 Đợi khoảng 1–2 phút để tất cả các dịch vụ ở trạng thái sẵn sàng.
 
@@ -139,7 +146,7 @@ Lần tiếp theo `docker compose up` sẽ hoạt động ngay, không cần set
 # 1. Xóa tất cả container và volume
 docker compose --profile simulate down -v
 
-# 2. Khởi động lại (init-index sẽ tự tạo lại index với mapping đúng)
+# 2. Khởi động lại (init-index và init-routes sẽ tự tạo lại index với mapping đúng)
 docker compose --profile simulate up -d --build
 ```
 
@@ -163,7 +170,13 @@ docker compose --profile simulate up -d --build
 │       ├── core/es_client.py         ← Elasticsearch client (singleton)
 │       └── routers/
 │           ├── livebus.py            ← GET /api/livebus (vị trí dạng GeoJSON)
-│           └── fuzzysearch.py        ← GET /api/fuzzysearch (tìm kiếm tuyến)
+│           ├── fuzzysearch.py        ← GET /api/fuzzysearch (tìm kiếm tuyến)
+│           ├── platesearch.py        ← GET /api/platesearch (tra cứu theo biển số)
+│           ├── routedetail.py        ← GET /api/routedetail (toàn bộ hành trình tuyến)
+│           ├── stats.py              ← GET /api/stats (thống kê tổng hợp)
+│           ├── filterbus.py          ← GET /api/filter (lọc xe theo tuyến/trạng thái)
+│           ├── activity.py           ← GET /api/most_active_bus, /api/bus_track
+│           └── nearby.py             ← GET /api/nearby_buses, /api/nearby_stops
 │
 ├── ui/
 │   ├── Dockerfile
@@ -179,13 +192,19 @@ docker compose --profile simulate up -d --build
 │   └── pipeline/kafka-to-es.conf     ← ETL: Kafka → xử lý → Elasticsearch
 │
 ├── scripts/
-│   └── create_index.py               ← Tạo index ES với mapping geo_point (chạy tự động qua Docker)
+│   ├── create_index.py               ← Tạo index bus_waypoints với mapping geo_point (chạy tự động qua Docker)
+│   └── index_routes.py               ← Nạp dữ liệu tuyến đường vào index bus_routes (chạy tự động qua Docker)
 │
 ├── data/
 │   └── raw/
 │       ├── data/                     ← sub_raw_*.json (dữ liệu nguồn)
 │       ├── vehicle_route_mapping.json
-│       └── routes_clean.json
+│       ├── routes_clean.json
+│       └── sample_small.json         ← 10 bản ghi mẫu thể hiện format raw GPS (đa dạng field)
+│
+├── docs/
+│   ├── sample_es_doc.json            ← Ví dụ 5 document thực tế trong Elasticsearch (sau pipeline)
+│   └── es_mapping.json               ← Mapping Elasticsearch của index bus_waypoints
 │
 ├── .env                              ← Cấu hình Simulator
 ├── requirements.txt                  ← Thư viện cho backend, UI và scripts
