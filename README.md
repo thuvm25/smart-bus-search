@@ -1,63 +1,59 @@
 # Smart Bus GPS Search
 
-Hệ thống giả lập streaming dữ liệu GPS xe buýt TP.HCM qua pipeline đầy đủ từ nguồn đến giao diện:
+A real-time GPS data streaming simulation for Ho Chi Minh City buses, built on a full end-to-end pipeline:
 
 ```
 Data (JSON) → Simulator → Kafka → Logstash → Elasticsearch → FastAPI → Streamlit UI
 ```
 
-Dữ liệu gốc là dữ liệu lịch sử (~104 triệu bản ghi GPS), được giả lập thành luồng dữ liệu thời gian thực và hiển thị trên giao diện Streamlit.
+The source data is historical GPS records (~104 million entries), replayed as a real-time stream and visualized on an interactive Streamlit map.
 
-## Kiến trúc
+## Architecture
+
+![Architecture](image/architect_flow.png)
 
 ```
 ┌───────────┐    ┌─────────┐    ┌──────────┐    ┌───────────────┐
 │ Simulator │───▶│  Kafka  │───▶│ Logstash │───▶│ Elasticsearch │
 │(Producer) │    │(Broker) │    │  (ETL)   │    │  (Storage)    │
 └───────────┘    └─────────┘    └──────────┘    └───────┬───────┘
-  Đọc JSON,        Bộ đệm        Phân tích JSON,         │
-  làm giàu dữ liệu topic:        geo_point,              └──────▶ FastAPI :8000
-  tuyến đường,     bus-gps-raw   @timestamp                       /api/livebus
-  dịch chuyển                    → index ES                       /api/fuzzysearch
-  thời gian                                                        /api/platesearch
-  → gửi Kafka                                                      /api/routedetail
-                                                                   /api/stats
-                                                                   /api/filter
-                                                                   /api/nearby_buses
-                                                                   /api/most_active_bus
-                                                                        │
-                                                                        ▼
-                                                                  Streamlit :8501
-                                                                  Bản đồ trực tiếp + Tìm kiếm tuyến
+  Reads JSON,      Buffer         Parses JSON,           │
+  enriches data    topic:         geo_point,             └──────▶ FastAPI :8000
+  with route info  bus-gps-raw   @timestamp                       /api/livebus
+  shifts timestamps               → ES index                      /api/fuzzysearch
+  → publishes                                                           │
+    to Kafka                                                            ▼
+                                                                 Streamlit :8501
+                                                                 Live map + Route search
 ```
 
-## Yêu cầu hệ thống
+## Requirements
 
-- **Docker Desktop** ≥ 4.x (cấp ít nhất **6 GB RAM** trong phần cài đặt Docker Desktop)
+- **Docker Desktop** ≥ 4.x (allocate at least **6 GB RAM** in Docker Desktop Settings → Resources)
 
 ---
 
-## Hướng dẫn cài đặt
+## Setup
 
-### Bước 0 — Clone dự án & chuẩn bị dữ liệu
+### Step 0 — Clone the repo & prepare data
 
 ```bash
 git clone <repo-url>
 cd smart-bus-search
 ```
 
-Đặt các file dữ liệu GPS JSON vào đúng cấu trúc thư mục sau:
+Place the GPS JSON data files in the following directory structure:
 
 ```
 data/raw/
-├── data/                          ← đặt các file sub_raw_*.json vào đây
+├── data/                          ← place sub_raw_*.json files here
 │   ├── sub_raw_1.json
 │   └── ...
-├── vehicle_route_mapping.json     ← có sẵn trong kho lưu trữ
-└── routes_clean.json              ← có sẵn trong kho lưu trữ
+├── vehicle_route_mapping.json     ← included in the repository
+└── routes_clean.json              ← included in the repository
 ```
 
-Nếu bạn có file nén `hcmut-gps.zip`:
+If you have the `hcmut-gps.zip` archive:
 
 ```bash
 mkdir -p data/raw/data
@@ -67,62 +63,63 @@ mv data/raw/part2/part2/*.json data/raw/data/ 2>/dev/null
 rm -rf data/raw/part1 data/raw/part2
 ```
 
-### Bước 1 — Khởi động toàn bộ hệ thống
+### Step 1 — Start the full stack
 
 ```bash
 docker compose --profile simulate up -d --build
 ```
 
-Docker sẽ tự động khởi động các dịch vụ theo đúng thứ tự:
+Docker starts services in the correct dependency order:
 
-1. Elasticsearch & Kafka khởi động và chờ đến khi `healthy`
-2. **`init-index`** chạy `create_index.py` — tạo index `bus_waypoints` với mapping chính xác (`geo_point`, `keyword`, v.v.)
-3. **`init-routes`** chạy `index_routes.py` — nạp dữ liệu tuyến đường vào index `bus_routes` (phục vụ fuzzy search)
-4. Logstash bắt đầu sau khi cả hai init hoàn tất — tránh xung đột Dynamic Mapping
-5. Backend, UI, Simulator khởi động song song
+1. Elasticsearch & Kafka start and wait until `healthy`
+2. **`init-index`** runs `create_index.py` — creates the `bus_waypoints` index with the correct mapping (`geo_point`, `keyword`, etc.)
+3. Logstash starts only after the index is ready — prevents dynamic mapping conflicts
+4. Backend, UI, and Simulator start in parallel
 
-Đợi khoảng 1–2 phút để tất cả các dịch vụ ở trạng thái sẵn sàng.
+Wait **1–2 minutes** for all services to become ready.
 
-### Bước 2 — Truy cập các địa chỉ
+### Step 2 — Access the services
 
-| Địa chỉ | Nội dung |
-|---------|----------|
-| http://localhost:8501 | Streamlit — Bản đồ trực tiếp + Tìm kiếm tuyến xe |
+| URL | Description |
+|-----|-------------|
+| http://localhost:8501 | Streamlit — Live map + Route search |
 | http://localhost:8000/docs | FastAPI — Swagger UI |
+
+![Web Interface](image/bus_search_web.png)
 
 ---
 
-## Kiểm tra từng công đoạn
+## Verifying the pipeline
 
 ```bash
-# ES có dữ liệu chưa?
+# Check if Elasticsearch has data
 curl -s http://localhost:9200/bus_waypoints/_count
 
-# Backend API có hoạt động không?
+# Check if the backend API is up
 curl -s http://localhost:8000/health
 
-# Simulator có đang phát dữ liệu không?
+# Check if the Simulator is producing data
 docker logs -f smart-bus-simulator
 
-# Logstash có đang nhận và đẩy dữ liệu vào ES không?
+# Check if Logstash is consuming and indexing data
 docker logs -f smart-bus-logstash
 ```
 
 ---
 
-## Cấu hình Simulator
+## Simulator configuration
 
-Simulator đọc cấu hình từ file `.env` ở thư mục gốc:
+The Simulator reads its config from the `.env` file in the project root:
 
-| Biến môi trường | Mặc định | Mô tả |
-|----------------|---------|-------|
-| `BATCH_SIZE` | `50` | Số lượng bản ghi gửi tới Kafka mỗi đợt |
-| `DELAY_MS` | `200` | Khoảng thời gian giữa các đợt gửi (ms) |
-| `SPEED_MULTIPLIER` | `1.0` | Hệ số tốc độ phát (2.0 = nhanh gấp đôi) |
-| `LOOP` | `false` | Tự động lặp lại từ đầu khi hết dữ liệu |
-| `MAX_FILES` | `0` | Giới hạn số file JSON xử lý (0 = tất cả) |
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BATCH_SIZE` | `50` | Number of records sent to Kafka per batch |
+| `DELAY_MS` | `200` | Delay between batches (ms) |
+| `SPEED_MULTIPLIER` | `1.0` | Playback speed multiplier (2.0 = twice as fast) |
+| `LOOP` | `false` | Restart from the beginning when all data is exhausted |
+| `MAX_FILES` | `0` | Limit the number of JSON files processed (0 = all) |
 
-Tạm dừng / Tiếp tục luồng dữ liệu:
+Pause / Resume the data stream:
 
 ```bash
 docker kill --signal=SIGUSR1 smart-bus-simulator
@@ -130,57 +127,51 @@ docker kill --signal=SIGUSR1 smart-bus-simulator
 
 ---
 
-## Khởi động & Dừng hệ thống
+## Starting & stopping
 
-### Dừng (giữ lại dữ liệu trong ES)
+### Stop (preserve Elasticsearch data)
 
 ```bash
 docker compose --profile simulate down
 ```
 
-Lần tiếp theo `docker compose up` sẽ hoạt động ngay, không cần setup lại.
+The next `docker compose up` will start immediately without re-initialization.
 
-### Làm mới hoàn toàn (xóa sạch dữ liệu ES)
+### Full reset (wipe Elasticsearch data)
 
 ```bash
-# 1. Xóa tất cả container và volume
+# 1. Remove all containers and volumes
 docker compose --profile simulate down -v
 
-# 2. Khởi động lại (init-index và init-routes sẽ tự tạo lại index với mapping đúng)
+# 2. Restart (init-index will recreate the index with the correct mapping)
 docker compose --profile simulate up -d --build
 ```
 
 ---
 
-## Phát triển — Chỉnh sửa code không cần khởi động lại Docker
+## Development — hot reload without restarting Docker
 
-- **Backend** (`backend/`): uvicorn chạy với `--reload`, tự động tải lại khi lưu file.
-- **UI** (`ui/`): Streamlit chạy với `--server.runOnSave true`, tự động tải lại trang.
-- Chỉ cần `--build` lại khi thêm thư viện mới vào `requirements.txt`.
+- **Backend** (`backend/`): uvicorn runs with `--reload`, automatically reloads on file save.
+- **UI** (`ui/`): Streamlit runs with `--server.runOnSave true`, automatically refreshes the page.
+- Only rebuild with `--build` when adding new packages to `requirements.txt`.
 
 ---
 
-## Cấu trúc thư mục
+## Project structure
 
 ```
 ├── backend/                          ← FastAPI REST API
 │   ├── Dockerfile
 │   └── app/
-│       ├── main.py                   ← Điểm đầu vào, CORS, health check
+│       ├── main.py                   ← Entry point, CORS, health check
 │       ├── core/es_client.py         ← Elasticsearch client (singleton)
 │       └── routers/
-│           ├── livebus.py            ← GET /api/livebus (vị trí dạng GeoJSON)
-│           ├── fuzzysearch.py        ← GET /api/fuzzysearch (tìm kiếm tuyến)
-│           ├── platesearch.py        ← GET /api/platesearch (tra cứu theo biển số)
-│           ├── routedetail.py        ← GET /api/routedetail (toàn bộ hành trình tuyến)
-│           ├── stats.py              ← GET /api/stats (thống kê tổng hợp)
-│           ├── filterbus.py          ← GET /api/filter (lọc xe theo tuyến/trạng thái)
-│           ├── activity.py           ← GET /api/most_active_bus, /api/bus_track
-│           └── nearby.py             ← GET /api/nearby_buses, /api/nearby_stops
+│           ├── livebus.py            ← GET /api/livebus (GeoJSON bus positions)
+│           └── fuzzysearch.py        ← GET /api/fuzzysearch (route search)
 │
 ├── ui/
 │   ├── Dockerfile
-│   └── smartsearchbus_web.py         ← Giao diện Streamlit
+│   └── smartsearchbus_web.py         ← Streamlit frontend
 │
 ├── simulator/
 │   ├── Dockerfile
@@ -189,15 +180,14 @@ docker compose --profile simulate up -d --build
 │
 ├── logstash/
 │   ├── config/logstash.yml
-│   └── pipeline/kafka-to-es.conf     ← ETL: Kafka → xử lý → Elasticsearch
+│   └── pipeline/kafka-to-es.conf     ← ETL: Kafka → transform → Elasticsearch
 │
 ├── scripts/
-│   ├── create_index.py               ← Tạo index bus_waypoints với mapping geo_point (chạy tự động qua Docker)
-│   └── index_routes.py               ← Nạp dữ liệu tuyến đường vào index bus_routes (chạy tự động qua Docker)
+│   └── create_index.py               ← Creates ES index with geo_point mapping (runs automatically via Docker)
 │
 ├── data/
 │   └── raw/
-│       ├── data/                     ← sub_raw_*.json (dữ liệu nguồn)
+│       ├── data/                     ← sub_raw_*.json source files
 │       ├── vehicle_route_mapping.json
 │       ├── routes_clean.json
 │       └── sample_small.json         ← 10 bản ghi mẫu thể hiện format raw GPS (đa dạng field)
@@ -206,13 +196,13 @@ docker compose --profile simulate up -d --build
 │   ├── sample_es_doc.json            ← Ví dụ 5 document thực tế trong Elasticsearch (sau pipeline)
 │   └── es_mapping.json               ← Mapping Elasticsearch của index bus_waypoints
 │
-├── .env                              ← Cấu hình Simulator
-├── requirements.txt                  ← Thư viện cho backend, UI và scripts
+├── .env                              ← Simulator configuration
+├── requirements.txt                  ← Dependencies for backend, UI, and scripts
 └── docker-compose.yml
 ```
 
-## Lưu ý khi demo
+## Demo notes
 
-- Timestamp được dịch chuyển về "hiện tại" → bản đồ Streamlit hiển thị như dữ liệu thời gian thực.
-- Tăng `SPEED_MULTIPLIER` hoặc giảm `DELAY_MS` trong `.env` để dữ liệu phát nhanh hơn.
-- Bản đồ nền dùng OpenStreetMap — không yêu cầu bản quyền Elastic Maps Service.
+- Timestamps are shifted to "now" so the Streamlit map renders historical data as if it were live.
+- Increase `SPEED_MULTIPLIER` or decrease `DELAY_MS` in `.env` to replay data faster.
+- The map tile layer uses OpenStreetMap — no Elastic Maps Service license required.
